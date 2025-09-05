@@ -19,6 +19,9 @@ class SocketHandler {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const isLocalNetwork = window.location.hostname.includes('192.168');
             
+            const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+            const serverUrl = isProduction ? 'https://103.181.200.66:4000' : '';
+            
             let socketOptions = {
                 transports: ['websocket', 'polling'],
                 timeout: 20000,
@@ -30,7 +33,7 @@ class SocketHandler {
                 socketOptions.rememberUpgrade = true;
             }
             
-            this.socket = io(socketOptions);
+            this.socket = io(serverUrl, socketOptions);
             console.log('Socket.io connection initiated');
             
             this.bindSocketEvents();
