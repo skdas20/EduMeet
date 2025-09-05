@@ -19,13 +19,18 @@ class SocketHandler {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const isLocalNetwork = window.location.hostname.includes('192.168');
             
-            const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-            const serverUrl = isProduction ? 'http://103.181.200.66:4000' : '';
+            // Always use production server for now (since backend is deployed)
+            const serverUrl = 'http://103.181.200.66:4000';
+            
+            console.log('🔍 Connection Debug Info:');
+            console.log('  - Current hostname:', window.location.hostname);
+            console.log('  - Server URL:', serverUrl);
             
             let socketOptions = {
                 transports: ['websocket', 'polling'],
                 timeout: 20000,
-                forceNew: true
+                forceNew: true,
+                autoConnect: true
             };
             
             if (isMobile || isLocalNetwork) {
@@ -34,7 +39,8 @@ class SocketHandler {
             }
             
             this.socket = io(serverUrl, socketOptions);
-            console.log('Socket.io connection initiated');
+            console.log('🚀 Socket.io connection initiated with URL:', serverUrl || 'default');
+            console.log('🔧 Socket options:', socketOptions);
             
             this.bindSocketEvents();
             console.log('Socket handler initialized');
