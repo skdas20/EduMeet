@@ -1,0 +1,71 @@
+/* Custom Icon Font Fallback */
+@font-face {
+    font-family: 'IconFont';
+    src: url('data:font/woff2;base64,') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Font Awesome Icon Fallbacks using Unicode */
+.fas, .fa {
+    font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "IconFont", Arial, sans-serif !important;
+    font-weight: 900 !important;
+    font-style: normal !important;
+    display: inline-block !important;
+    text-rendering: auto !important;
+    line-height: 1 !important;
+}
+
+/* Specific icon mappings using Unicode characters */
+.fa-microphone::before { content: "\f130"; }
+.fa-microphone-slash::before { content: "\f131"; }
+.fa-video::before { content: "\f03d"; }
+.fa-video-slash::before { content: "\f4cc"; }
+.fa-desktop::before { content: "\f108"; }
+.fa-phone-slash::before { content: "\f3dd"; }
+.fa-hand-paper::before { content: "\f256"; }
+.fa-paint-brush::before { content: "\f1fc"; }
+.fa-comments::before { content: "\f086"; }
+.fa-users::before { content: "\f0c0"; }
+.fa-cog::before { content: "\f013"; }
+.fa-times::before { content: "\f00d"; }
+.fa-plus-circle::before { content: "\f055"; }
+.fa-sign-in-alt::before { content: "\f2f6"; }
+.fa-chalkboard-teacher::before { content: "\f51c"; }
+.fa-dice::before { content: "\f522"; }
+.fa-rocket::before { content: "\f135"; }
+.fa-record-vinyl::before { content: "\f8d9"; }
+.fa-paper-plane::before { content: "\f1d8"; }
+.fa-pen::before { content: "\f304"; }
+.fa-eraser::before { content: "\f12d"; }
+.fa-font::before { content: "\f031"; }
+.fa-minus::before { content: "\f068"; }
+.fa-square::before { content: "\f0c8"; }
+.fa-circle::before { content: "\f111"; }
+.fa-trash::before { content: "\f1f8"; }
+.fa-undo::before { content: "\f0e2"; }
+.fa-thumbtack::before { content: "\f08d"; }
+
+/* Fallback for when Font Awesome completely fails */
+.icon-fallback {
+    font-family: Arial, sans-serif !important;
+    font-weight: bold !important;
+    font-size: 0.9em !important;
+}
+
+/* Text-based fallbacks */
+.no-fa .fa-microphone::before { content: "🎤"; font-family: Arial, sans-serif; }
+.no-fa .fa-microphone-slash::before { content: "🚫"; font-family: Arial, sans-serif; }
+.no-fa .fa-video::before { content: "📹"; font-family: Arial, sans-serif; }
+.no-fa .fa-video-slash::before { content: "📵"; font-family: Arial, sans-serif; }
+.no-fa .fa-desktop::before { content: "🖥"; font-family: Arial, sans-serif; }
+.no-fa .fa-phone-slash::before { content: "📞"; font-family: Arial, sans-serif; }
+.no-fa .fa-hand-paper::before { content: "✋"; font-family: Arial, sans-serif; }
+.no-fa .fa-paint-brush::before { content: "🎨"; font-family: Arial, sans-serif; }
+.no-fa .fa-comments::before { content: "💬"; font-family: Arial, sans-serif; }
+.no-fa .fa-users::before { content: "👥"; font-family: Arial, sans-serif; }
+.no-fa .fa-cog::before { content: "⚙"; font-family: Arial, sans-serif; }
+.no-fa .fa-times::before { content: "✕"; font-family: Arial, sans-serif; }
+.no-fa .fa-plus-circle::before { content: "➕"; font-family: Arial, sans-serif; }
+.no-fa .fa-sign-in-alt::before { content: "→"; font-family: Arial, sans-serif; }
+.no-fa .fa-rocket::before { content: "🚀"; font-family: Arial, sans-serif; }

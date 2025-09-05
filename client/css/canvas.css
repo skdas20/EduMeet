@@ -1,0 +1,586 @@
+/* Canvas Overlay Styles */
+
+.canvas-container {
+    position: fixed;
+    top: 60px; /* Below header */
+    right: 0;
+    width: 400px;
+    height: calc(100vh - 60px);
+    background: rgba(20, 20, 20, 0.95);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    z-index: 40;
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+}
+
+.canvas-container.active {
+    transform: translateX(0);
+    pointer-events: all;
+}
+
+.shared-canvas {
+    flex: 1;
+    width: 100%;
+    cursor: crosshair;
+    background: white;
+    margin: 20px;
+    border-radius: 8px;
+    width: calc(100% - 40px);
+    height: calc(100% - 100px);
+}
+
+.shared-canvas.eraser {
+    cursor: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTggMTJMMTIgOEwyMCAxNkwxNiAyMEw4IDEyWiIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'), auto;
+}
+
+.shared-canvas.text {
+    cursor: text;
+}
+
+/* Canvas Toolbar */
+.canvas-toolbar {
+    position: relative;
+    padding: 16px 20px;
+    background: rgba(45, 45, 45, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    backdrop-filter: blur(10px);
+}
+
+.tool-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    position: relative;
+}
+
+.tool-group:not(:last-child)::after {
+    content: '';
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.2);
+    margin-left: 12px;
+}
+
+.tool-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tool-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tool-btn.active {
+    background: #ffd700;
+    color: #333;
+}
+
+.tool-btn.danger {
+    background: rgba(244, 67, 54, 0.8);
+}
+
+.tool-btn.danger:hover {
+    background: rgba(244, 67, 54, 1);
+}
+
+/* Tool-specific styles */
+#colorPicker {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: none;
+    padding: 4px;
+}
+
+#colorPicker::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border: none;
+}
+
+#colorPicker::-webkit-color-swatch {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+}
+
+#brushSize {
+    width: 80px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+    appearance: none;
+}
+
+#brushSize::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+    border: 2px solid #333;
+}
+
+#brushSize::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+    border: 2px solid #333;
+}
+
+/* Brush Size Indicator */
+.brush-size-indicator {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+#brushSize:hover + .brush-size-indicator,
+#brushSize:focus + .brush-size-indicator {
+    opacity: 1;
+}
+
+/* Canvas Actions Feedback */
+.canvas-feedback {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.canvas-feedback.show {
+    opacity: 1;
+}
+
+/* Drawing Cursor with brush size preview */
+.canvas-cursor {
+    position: fixed;
+    border-radius: 50%;
+    border: 2px solid #ffd700;
+    background: rgba(255, 215, 0, 0.2);
+    pointer-events: none;
+    z-index: 1000;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.canvas-cursor.show {
+    opacity: 1;
+}
+
+/* Shape Drawing Preview */
+.shape-preview {
+    position: absolute;
+    pointer-events: none;
+    z-index: 60;
+}
+
+/* Text Input Modal */
+.text-input-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.text-input-modal.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.text-input-content {
+    background: #2d2d2d;
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 400px;
+    color: white;
+}
+
+.text-input-header {
+    margin-bottom: 16px;
+}
+
+.text-input-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.text-input-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.text-input-form input[type="text"] {
+    padding: 12px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background: #333;
+    color: white;
+    font-size: 16px;
+    outline: none;
+}
+
+.text-input-form input[type="text"]:focus {
+    border-color: #ffd700;
+}
+
+.text-size-slider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.text-size-slider label {
+    font-size: 14px;
+    min-width: 60px;
+}
+
+.text-size-slider input[type="range"] {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+    appearance: none;
+}
+
+.text-size-slider input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+}
+
+.text-size-slider span {
+    min-width: 30px;
+    text-align: right;
+    font-size: 14px;
+    color: #ffd700;
+}
+
+.text-input-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.text-input-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.text-input-actions .cancel-btn {
+    background: #666;
+    color: white;
+}
+
+.text-input-actions .cancel-btn:hover {
+    background: #777;
+}
+
+.text-input-actions .add-btn {
+    background: #ffd700;
+    color: #333;
+}
+
+.text-input-actions .add-btn:hover {
+    background: #ffed4e;
+}
+
+/* Collaborative Drawing Indicators */
+.drawing-participant {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 70;
+    transition: all 0.1s ease;
+}
+
+.drawing-participant::after {
+    content: attr(data-name);
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.drawing-participant:hover::after {
+    opacity: 1;
+}
+
+/* Canvas Layer Controls */
+.layer-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(45, 45, 45, 0.95);
+    border-radius: 12px;
+    padding: 16px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.layer-controls h4 {
+    color: white;
+    font-size: 14px;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.opacity-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.opacity-control label {
+    color: white;
+    font-size: 12px;
+    min-width: 50px;
+}
+
+.opacity-control input[type="range"] {
+    width: 100px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+    appearance: none;
+}
+
+.opacity-control input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+}
+
+.layer-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.layer-toggle label {
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.layer-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #ffd700;
+}
+
+/* Mobile Canvas Controls */
+@media (max-width: 768px) {
+    .canvas-toolbar {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        max-width: none;
+        padding: 12px;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .tool-group {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .tool-group::after {
+        display: none;
+    }
+    
+    .tool-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+    
+    #brushSize {
+        width: 100px;
+    }
+    
+    .layer-controls {
+        top: 10px;
+        right: 10px;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .canvas-toolbar {
+        position: fixed;
+        bottom: 80px;
+        top: auto;
+        left: 10px;
+        right: 10px;
+        border-radius: 20px;
+        padding: 16px;
+    }
+    
+    .tool-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 12px;
+    }
+    
+    #colorPicker {
+        width: 36px;
+        height: 36px;
+    }
+    
+    #brushSize {
+        width: 80px;
+    }
+    
+    .layer-controls {
+        display: none; /* Hide on mobile for space */
+    }
+    
+    .text-input-content {
+        margin: 20px;
+        width: auto;
+    }
+}
+
+/* Touch-specific optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .tool-btn {
+        min-width: 48px;
+        min-height: 48px;
+    }
+    
+    .shared-canvas {
+        touch-action: none; /* Prevent scrolling while drawing */
+    }
+    
+    .brush-size-indicator {
+        display: none; /* Touch devices don't have hover */
+    }
+}
+
+/* High DPI displays */
+@media (min-resolution: 192dpi) {
+    .shared-canvas {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Animation for tool selection */
+@keyframes tool-select {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Canvas Panel Mobile Responsive */
+@media (max-width: 768px) {
+    .canvas-container {
+        width: 100%;
+        height: 100%;
+        top: 0;
+        right: 0;
+        transform: translateX(100%);
+    }
+    
+    .canvas-container.active {
+        transform: translateX(0);
+    }
+    
+    .shared-canvas {
+        margin: 10px;
+        width: calc(100% - 20px);
+        height: calc(100% - 80px);
+    }
+    
+    .canvas-toolbar {
+        padding: 12px;
+        gap: 8px;
+    }
+}
+
+.tool-btn.selecting {
+    animation: tool-select 0.2s ease;
+}

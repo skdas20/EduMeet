@@ -1,0 +1,433 @@
+/* Video Controls Specific Styles */
+
+/* Controls Bar */
+.controls-bar {
+    background: #2d2d2d;
+    padding: 16px 24px;
+    border-top: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 100;
+}
+
+.controls-left,
+.controls-center,
+.controls-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.control-btn {
+    min-width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 24px;
+    background: #444;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 0 16px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.control-btn:hover {
+    background: #555;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+}
+
+.control-btn i {
+    font-size: 18px;
+}
+
+.control-btn span {
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+/* Button States */
+.control-btn.active {
+    background: #ffd700;
+    color: #333;
+}
+
+.control-btn.active:hover {
+    background: #ffed4e;
+}
+
+.control-btn.disabled {
+    background: #ff4444;
+    cursor: not-allowed;
+}
+
+.control-btn.disabled:hover {
+    background: #ff6666;
+    transform: none;
+    box-shadow: none;
+}
+
+.control-btn.danger {
+    background: #ff4444;
+}
+
+.control-btn.danger:hover {
+    background: #ff6666;
+}
+
+/* Specific Button Styles */
+#toggleMic {
+    background: #4caf50;
+}
+
+#toggleMic.disabled {
+    background: #ff4444;
+}
+
+#toggleCamera {
+    background: #2196f3;
+}
+
+#toggleCamera.disabled {
+    background: #ff4444;
+}
+
+#shareScreen {
+    background: #9c27b0;
+}
+
+#shareScreen.active {
+    background: #ffd700;
+    color: #333;
+}
+
+#recordSession {
+    background: #f44336;
+}
+
+#recordSession.active {
+    background: #ff1744;
+    animation: pulse-record 2s infinite;
+}
+
+@keyframes pulse-record {
+    0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+}
+
+/* Volume Indicators */
+.volume-indicator {
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.volume-level {
+    height: 100%;
+    background: #4caf50;
+    width: 0%;
+    transition: width 0.1s ease;
+    border-radius: 2px;
+}
+
+/* Screen Share Overlay */
+.screen-share-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    color: white;
+    text-align: center;
+}
+
+.screen-share-content h3 {
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
+.screen-share-content p {
+    font-size: 16px;
+    margin-bottom: 24px;
+    opacity: 0.8;
+}
+
+.screen-share-options {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.share-option {
+    padding: 16px 24px;
+    border: 2px solid #444;
+    border-radius: 12px;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 150px;
+}
+
+.share-option:hover {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.share-option i {
+    display: block;
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+/* Connection Status Indicator */
+.connection-status {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4caf50;
+    border: 2px solid #2d2d2d;
+}
+
+.connection-status.poor {
+    background: #ff9800;
+}
+
+.connection-status.bad {
+    background: #f44336;
+}
+
+.connection-status.disconnected {
+    background: #666;
+}
+
+/* Keyboard Shortcuts Indicator */
+.shortcut-hint {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.control-btn:hover .shortcut-hint {
+    opacity: 1;
+}
+
+/* Advanced Controls Menu */
+.advanced-controls {
+    position: absolute;
+    top: -120px;
+    right: 0;
+    background: #2d2d2d;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.advanced-controls.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+}
+
+.advanced-control-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    gap: 12px;
+}
+
+.advanced-control-item:hover {
+    background: #444;
+}
+
+.advanced-control-item i {
+    width: 16px;
+    text-align: center;
+}
+
+/* Audio Level Visualization */
+.audio-visualizer {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 8px;
+}
+
+.audio-bar {
+    width: 3px;
+    height: 12px;
+    background: rgba(76, 175, 80, 0.3);
+    border-radius: 1px;
+    transition: all 0.1s ease;
+}
+
+.audio-bar.active {
+    background: #4caf50;
+    height: 16px;
+}
+
+/* Video Quality Indicator */
+.quality-indicator {
+    position: absolute;
+    top: -30px;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.control-btn:hover .quality-indicator {
+    opacity: 1;
+}
+
+/* Notification Badges */
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 20px;
+    height: 20px;
+    background: #f44336;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 11px;
+    font-weight: bold;
+    border: 2px solid #2d2d2d;
+}
+
+/* Hand Raise Animation */
+#raiseHand.active {
+    animation: hand-wave 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes hand-wave {
+    0% { transform: rotate(-10deg); }
+    100% { transform: rotate(10deg); }
+}
+
+/* Responsive Controls */
+@media (max-width: 768px) {
+    .controls-bar {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .control-btn {
+        min-width: 44px;
+        height: 44px;
+        padding: 0 12px;
+    }
+    
+    .control-btn span {
+        display: none;
+    }
+    
+    .controls-center,
+    .controls-right {
+        gap: 8px;
+    }
+    
+    .advanced-controls {
+        right: -50px;
+        min-width: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .controls-bar {
+        justify-content: center;
+    }
+    
+    .controls-left,
+    .controls-center,
+    .controls-right {
+        gap: 6px;
+    }
+    
+    .control-btn {
+        min-width: 40px;
+        height: 40px;
+        border-radius: 20px;
+    }
+    
+    .control-btn i {
+        font-size: 16px;
+    }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .control-btn {
+        min-width: 52px;
+        height: 52px;
+    }
+    
+    .shortcut-hint {
+        display: none;
+    }
+    
+    .control-btn:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .control-btn:active {
+        transform: scale(0.95);
+    }
+}

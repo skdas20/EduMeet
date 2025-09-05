@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>EduMeet - Educational Video Conferencing</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/video-controls.css">
+    <link rel="stylesheet" href="css/canvas.css">
+    <link rel="stylesheet" href="css/icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons - Updated working version -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+        /* Ensure Font Awesome icons display correctly */
+        .fas, .fa {
+            font-family: "Font Awesome 6 Free", "Font Awesome 5 Pro", "FontAwesome" !important;
+            font-weight: 900 !important;
+            font-style: normal !important;
+            display: inline-block !important;
+            font-variant: normal !important;
+            text-rendering: auto !important;
+            line-height: 1 !important;
+        }
+        .far {
+            font-family: "Font Awesome 6 Free", "Font Awesome 5 Pro", "FontAwesome" !important;
+            font-weight: 400 !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="space-background"></div>
+        <div class="stars"></div>
+        <div class="loading-content">
+            <div class="loading-logo">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="loading-spinner">
+                <div class="orbit"></div>
+                <div class="planet"></div>
+            </div>
+            <h2 class="loading-title">Launching EduMeet...</h2>
+            <p class="loading-subtitle">Preparing your space for learning</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Screen -->
+    <div id="joinScreen" class="join-screen">
+        <div class="space-background"></div>
+        <div class="stars"></div>
+        <div class="join-container">
+            <div class="logo">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <h1>EduMeet</h1>
+                <p>Interactive Learning Platform</p>
+            </div>
+            
+            <form id="joinForm" class="join-form">
+                <div class="form-group">
+                    <label for="userName">Your Name</label>
+                    <input type="text" id="userName" name="userName" required 
+                           placeholder="Enter your full name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="roomId">Room ID</label>
+                    <div class="room-input-group">
+                        <input type="text" id="roomId" name="roomId" 
+                               placeholder="Enter room ID">
+                        <button type="button" id="generateRoomBtn" class="btn-generate">
+                            <i class="fas fa-dice"></i>
+                            Generate
+                        </button>
+                    </div>
+                    <small class="form-hint">Leave empty to create a new room automatically</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="isTeacher" name="isTeacher">
+                        <span class="checkmark"></span>
+                        I am a teacher/instructor
+                    </label>
+                </div>
+                
+                <div class="action-buttons">
+                    <button type="button" id="createRoomBtn" class="create-room-btn">
+                        <i class="fas fa-plus-circle"></i>
+                        Create New Room
+                    </button>
+                    <button type="submit" class="join-btn">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Join Existing Room
+                    </button>
+                </div>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Meeting Interface -->
+    <div id="meetingRoom" class="meeting-room hidden">
+        <!-- Header -->
+        <header class="meeting-header">
+            <div class="header-left">
+                <h2 id="roomTitle">EduMeet Session</h2>
+                <span id="participantCount" class="participant-count">1 participant</span>
+            </div>
+            <div class="header-center">
+                <div class="meeting-time" id="meetingTimer">00:00</div>
+            </div>
+            <div class="header-right">
+                <button id="toggleChat" class="btn-header">
+                    <i class="fas fa-comments"></i>
+                </button>
+                <button id="toggleCanvas" class="btn-header">
+                    <i class="fas fa-paint-brush"></i>
+                </button>
+                <button id="toggleParticipants" class="btn-header">
+                    <i class="fas fa-users"></i>
+                </button>
+                <button id="settingsBtn" class="btn-header">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="meeting-content">
+            <!-- Video Grid -->
+            <div class="video-container">
+                <div id="videoGrid" class="video-grid">
+                    <!-- Videos will be dynamically added here -->
+                </div>
+                
+                <!-- Pinned Video -->
+                <div id="pinnedVideo" class="pinned-video hidden">
+                    <!-- Pinned video will be shown here -->
+                </div>
+            </div>
+
+            <!-- Canvas Overlay -->
+            <div id="canvasContainer" class="canvas-container hidden">
+                <canvas id="sharedCanvas" class="shared-canvas"></canvas>
+                <div class="canvas-toolbar">
+                    <div class="tool-group">
+                        <button id="penTool" class="tool-btn active" data-tool="pen">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button id="eraserTool" class="tool-btn" data-tool="eraser">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                        <button id="textTool" class="tool-btn" data-tool="text">
+                            <i class="fas fa-font"></i>
+                        </button>
+                        <button id="lineTool" class="tool-btn" data-tool="line">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button id="rectangleTool" class="tool-btn" data-tool="rectangle">
+                            <i class="fas fa-square"></i>
+                        </button>
+                        <button id="circleTool" class="tool-btn" data-tool="circle">
+                            <i class="fas fa-circle"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="tool-group">
+                        <input type="color" id="colorPicker" value="#000000">
+                        <input type="range" id="brushSize" min="1" max="20" value="3">
+                    </div>
+                    
+                    <div class="tool-group">
+                        <button id="clearCanvas" class="tool-btn danger">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button id="undoCanvas" class="tool-btn">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Participants Panel -->
+                <div id="participantsPanel" class="panel">
+                    <div class="panel-header">
+                        <h3>Participants</h3>
+                        <button id="closeParticipants" class="close-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <div id="participantsList" class="participants-list">
+                            <!-- Participants will be listed here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Panel -->
+                <div id="chatPanel" class="panel">
+                    <div class="panel-header">
+                        <h3>Chat</h3>
+                        <button id="closeChat" class="close-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <div id="chatMessages" class="chat-messages">
+                            <!-- Chat messages will appear here -->
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="chatInput" placeholder="Type a message...">
+                            <button id="sendChat" class="send-btn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+            <div class="controls-left">
+                <button id="toggleMic" class="control-btn">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="toggleCamera" class="control-btn">
+                    <i class="fas fa-video"></i>
+                </button>
+                <button id="shareScreen" class="control-btn">
+                    <i class="fas fa-desktop"></i>
+                </button>
+            </div>
+            
+            <div class="controls-center">
+                <button id="raiseHand" class="control-btn">
+                    <i class="fas fa-hand-paper"></i>
+                    <span>Raise Hand</span>
+                </button>
+                <button id="toggleCanvasControl" class="control-btn">
+                    <i class="fas fa-paint-brush"></i>
+                    <span>Canvas</span>
+                </button>
+            </div>
+            
+            <div class="controls-right">
+                <button id="recordSession" class="control-btn" disabled>
+                    <i class="fas fa-record-vinyl"></i>
+                </button>
+                <button id="leaveRoom" class="control-btn danger">
+                    <i class="fas fa-phone-slash"></i>
+                    <span>Leave</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>Audio & Video</h4>
+                    <div class="setting-item">
+                        <label>Microphone</label>
+                        <select id="microphoneSelect">
+                            <option>Default Microphone</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Camera</label>
+                        <select id="cameraSelect">
+                            <option>Default Camera</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Speaker</label>
+                        <select id="speakerSelect">
+                            <option>Default Speaker</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Display</h4>
+                    <div class="setting-item">
+                        <label class="switch-container">
+                            <input type="checkbox" id="showParticipantNames">
+                            <span class="switch"></span>
+                            Show participant names
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label class="switch-container">
+                            <input type="checkbox" id="enableSpatialAudio">
+                            <span class="switch"></span>
+                            Enable spatial audio
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script>
+        // Font Awesome Detection and Fallback
+        function checkFontAwesome() {
+            const testElement = document.createElement('i');
+            testElement.className = 'fas fa-home';
+            testElement.style.position = 'absolute';
+            testElement.style.left = '-9999px';
+            document.body.appendChild(testElement);
+            
+            const computedStyle = window.getComputedStyle(testElement, ':before');
+            const content = computedStyle.getPropertyValue('content');
+            
+            document.body.removeChild(testElement);
+            
+            // If Font Awesome is not working, add fallback class
+            if (!content || content === 'none' || content === '""') {
+                console.warn('Font Awesome not loaded, using fallbacks');
+                document.body.classList.add('no-fa');
+            } else {
+                console.log('Font Awesome loaded successfully');
+            }
+        }
+        
+        // Run check when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', checkFontAwesome);
+        } else {
+            checkFontAwesome();
+        }
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- MediaSoup Client with fallback -->
+    <script>
+        // Load MediaSoup client with error handling
+        (function() {
+            var script = document.createElement('script');
+            script.src = 'https://unpkg.com/mediasoup-client@3.6.84/lib/index.min.js';
+            script.onload = function() {
+                console.log('MediaSoup client loaded successfully');
+            };
+            script.onerror = function() {
+                console.warn('Failed to load MediaSoup client from primary CDN, trying fallback...');
+                var fallbackScript = document.createElement('script');
+                fallbackScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mediasoup-client/3.6.84/mediasoup-client.min.js';
+                fallbackScript.onerror = function() {
+                    console.error('All MediaSoup CDN sources failed. Video/audio features will be limited.');
+                    window.mediasoupLoadFailed = true;
+                };
+                document.head.appendChild(fallbackScript);
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <script src="js/webrtc-manager.js"></script>
+    <script src="js/socket-handler.js"></script>
+    <script src="js/mediasoup-client.js"></script>
+    <script src="js/canvas.js"></script>
+    <script src="js/ui-controls.js"></script>
+    <script src="js/mobile-fixes.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
