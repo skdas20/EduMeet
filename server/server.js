@@ -57,7 +57,8 @@ app.use(cors({
     "https://vercel.app",
     "https://*.vercel.app",
     "https://edu-meet-sk.vercel.app",
-    "http://103.181.200.66:4000"
+    "http://103.181.200.66:4000",
+    "http://103.181.200.66:3000"
   ],
   credentials: true
 }));
