@@ -19,8 +19,14 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://vercel.app", 
+      "https://*.vercel.app"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -43,7 +49,16 @@ app.use(helmet({
   }
 }));
 app.use(compression());
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000", 
+    "https://vercel.app",
+    "https://*.vercel.app",
+    "http://103.181.200.66:4000"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client')));
 

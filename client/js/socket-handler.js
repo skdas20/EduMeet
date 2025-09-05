@@ -20,7 +20,7 @@ class SocketHandler {
             const isLocalNetwork = window.location.hostname.includes('192.168');
             
             const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-            const serverUrl = isProduction ? 'https://103.181.200.66:4000' : '';
+            const serverUrl = isProduction ? 'http://103.181.200.66:4000' : '';
             
             let socketOptions = {
                 transports: ['websocket', 'polling'],
