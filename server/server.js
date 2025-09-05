@@ -23,7 +23,8 @@ const io = socketIo(server, {
       "http://localhost:3000",
       "http://127.0.0.1:3000",
       "https://vercel.app", 
-      "https://*.vercel.app"
+      "https://*.vercel.app",
+      "https://edu-meet-sk.vercel.app"
     ],
     methods: ["GET", "POST"],
     credentials: true
@@ -55,6 +56,7 @@ app.use(cors({
     "http://127.0.0.1:3000", 
     "https://vercel.app",
     "https://*.vercel.app",
+    "https://edu-meet-sk.vercel.app",
     "http://103.181.200.66:4000"
   ],
   credentials: true
