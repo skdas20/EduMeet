@@ -19,8 +19,8 @@ class SocketHandler {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const isLocalNetwork = window.location.hostname.includes('192.168');
             
-            // Always use production server for now (since backend is deployed)
-            const serverUrl = 'http://103.181.200.66:4000';
+            // Use relative path since frontend and backend are on same server
+            const serverUrl = '';
             
             console.log('🔍 Connection Debug Info:');
             console.log('  - Current hostname:', window.location.hostname);
