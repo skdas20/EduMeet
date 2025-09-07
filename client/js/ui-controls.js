@@ -81,33 +81,70 @@ class UIControls {
     }
 
     bindLayoutControls() {
-        // Add layout switcher to header
+        // Add layout dropdown to header (single button + dropdown)
         const layoutSwitcher = document.createElement('div');
-        layoutSwitcher.className = 'layout-switcher';
+        layoutSwitcher.className = 'layout-switcher layout-dropdown';
         layoutSwitcher.innerHTML = `
-            <button class="btn-header layout-btn active" data-layout="auto" title="Auto Layout">
-                <i class="fas fa-th"></i>
-            </button>
-            <button class="btn-header layout-btn" data-layout="grid" title="Grid Layout">
+            <button class="btn-header layout-toggle" title="Layouts" aria-haspopup="true" aria-expanded="false">
                 <i class="fas fa-th-large"></i>
             </button>
-            <button class="btn-header layout-btn" data-layout="spotlight" title="Spotlight Layout">
-                <i class="fas fa-user"></i>
-            </button>
+            <div class="layout-menu hidden" role="menu" aria-label="Layout options">
+                <div class="layout-item" data-layout="auto" role="menuitem">Auto Layout</div>
+                <div class="layout-item" data-layout="grid" role="menuitem">Grid Layout</div>
+                <div class="layout-item" data-layout="spotlight" role="menuitem">Spotlight Layout</div>
+            </div>
         `;
-        
+
         const headerRight = document.querySelector('.header-right');
         if (headerRight) {
+            // Insert before existing header buttons so it aligns with chat/canvas/settings
             headerRight.insertBefore(layoutSwitcher, headerRight.firstChild);
         }
-        
-        // Bind layout events
-        document.querySelectorAll('.layout-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.switchLayout(btn.dataset.layout);
-                this.setActiveLayoutButton(btn);
+
+        // Dropdown toggle and selection handling
+        const toggleBtn = layoutSwitcher.querySelector('.layout-toggle');
+        const menu = layoutSwitcher.querySelector('.layout-menu');
+
+        const closeMenu = () => {
+            menu.classList.add('hidden');
+            toggleBtn.setAttribute('aria-expanded', 'false');
+        };
+
+        const openMenu = () => {
+            menu.classList.remove('hidden');
+            toggleBtn.setAttribute('aria-expanded', 'true');
+        };
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (menu.classList.contains('hidden')) openMenu(); else closeMenu();
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!layoutSwitcher.contains(e.target)) closeMenu();
+        });
+
+        // Keyboard accessibility: Esc to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeMenu();
+        });
+
+        // Menu item clicks
+        layoutSwitcher.querySelectorAll('.layout-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const layout = item.dataset.layout;
+                this.switchLayout(layout);
+                this.setActiveLayoutButton(item);
+                closeMenu();
             });
         });
+
+        // Initialize active state for the current layout
+        const initialItem = layoutSwitcher.querySelector(`.layout-item[data-layout="${this.gridLayout}"]`);
+        if (initialItem) {
+            this.setActiveLayoutButton(initialItem);
+        }
     }
 
     bindVideoQualityControls() {
@@ -548,10 +585,23 @@ class UIControls {
     }
 
     setActiveLayoutButton(activeBtn) {
-        document.querySelectorAll('.layout-btn').forEach(btn => {
-            btn.classList.remove('active');
+        // Clear active state from any previous layout controls (buttons or menu items)
+        document.querySelectorAll('.layout-btn, .layout-item, .layout-toggle').forEach(el => {
+            el.classList.remove('active');
+            if (el.getAttribute('aria-expanded')) el.setAttribute('aria-expanded', 'false');
         });
-        activeBtn.classList.add('active');
+
+        // If a menu item was passed, mark corresponding toggle/button active too
+        if (activeBtn && activeBtn.classList.contains('layout-item')) {
+            activeBtn.classList.add('active');
+            const layoutSwitcher = activeBtn.closest('.layout-switcher');
+            if (layoutSwitcher) {
+                const toggle = layoutSwitcher.querySelector('.layout-toggle');
+                if (toggle) toggle.classList.add('active');
+            }
+        } else if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
     }
 
     // Video Quality Management

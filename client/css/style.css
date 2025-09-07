@@ -575,6 +575,69 @@ body {
     gap: 12px;
 }
 
+/* Layout dropdown in header (single button + menu) */
+.layout-switcher.layout-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 !important; /* override any global layout-switcher padding */
+    margin: 0 !important;
+    height: 40px; /* match .btn-header height */
+    line-height: 40px;
+    vertical-align: middle;
+}
+
+.layout-toggle {
+    box-sizing: border-box;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    background: #444;
+    color: white;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+    margin: 0;
+    padding: 0;
+}
+
+.layout-toggle:hover {
+    background: #555;
+}
+
+.layout-menu {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    min-width: 160px;
+    background: #1f1f1f;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    padding: 8px 0;
+    z-index: 2000;
+}
+
+.layout-menu.hidden {
+    display: none;
+}
+
+.layout-item {
+    padding: 10px 14px;
+    color: #ddd;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.layout-item:hover {
+    background: rgba(255,255,255,0.03);
+    color: #fff;
+}
+
 .btn-header {
     width: 40px;
     height: 40px;
@@ -1317,7 +1380,6 @@ body {
         width: 36px;
         height: 36px;
     }
-}
 
 /* Layout System Fixes */
 .video-grid {

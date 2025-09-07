@@ -8,15 +8,16 @@
     min-width: 300px;
     max-width: 80vw;
     height: calc(100vh - 60px);
-    background: rgba(20, 20, 20, 0.95);
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(30, 30, 40, 0.95) 100%);
+    border-left: 2px solid rgba(33, 150, 243, 0.3);
     transform: translateX(100%);
     transition: transform 0.3s ease;
-    z-index: 40;
+    z-index: 200;
     backdrop-filter: blur(10px);
     display: flex;
-    flex-direction: column;
+    flex-direction: column; /* Mobile-first: column layout */
     overflow: hidden;
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .canvas-container.active {
@@ -26,13 +27,20 @@
 
 .shared-canvas {
     flex: 1;
-    width: 100%;
     cursor: crosshair;
     background: white;
-    margin: 20px;
-    border-radius: 8px;
-    width: calc(100% - 40px);
-    height: calc(100% - 100px);
+    margin: 20px; /* Mobile-first: equal margins */
+    border-radius: 12px;
+    border: 3px solid #2196F3; /* Nice blue border */
+    box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
+    width: calc(100% - 40px); /* Mobile-first: account for margins */
+    height: calc(100% - 100px); /* Mobile-first: account for toolbar */
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.shared-canvas:hover {
+    border-color: #1976D2;
+    box-shadow: 0 6px 25px rgba(33, 150, 243, 0.4);
 }
 
 .shared-canvas.eraser {
@@ -46,28 +54,32 @@
 /* Canvas Toolbar */
 .canvas-toolbar {
     position: relative;
-    padding: 16px 20px;
+    padding: 16px 20px; /* Mobile-first: horizontal padding */
     background: rgba(45, 45, 45, 0.95);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Mobile-first: bottom border */
+    display: flex !important; /* Force display */
+    flex-wrap: wrap; /* Mobile-first: wrap items */
     gap: 12px;
     align-items: center;
     backdrop-filter: blur(10px);
     z-index: 1001;
-    min-height: 76px;
+    min-height: 76px; /* Mobile-first: minimum height */
+    visibility: visible !important; /* Force visibility */
+    opacity: 1 !important; /* Force opacity */
 }
 
 .tool-group {
-    display: flex;
-    gap: 8px;
+    display: flex !important; /* Force display */
+    gap: 8px; /* Mobile-first: horizontal gap */
     align-items: center;
     position: relative;
+    visibility: visible !important; /* Force visibility */
+    opacity: 1 !important; /* Force opacity */
 }
 
 .tool-group:not(:last-child)::after {
     content: '';
-    width: 1px;
+    width: 1px; /* Mobile-first: vertical separator */
     height: 24px;
     background: rgba(255, 255, 255, 0.2);
     margin-left: 12px;
@@ -81,12 +93,14 @@
     background: rgba(255, 255, 255, 0.1);
     color: white;
     cursor: pointer;
-    display: flex;
+    display: flex !important; /* Force display */
     justify-content: center;
     align-items: center;
     font-size: 16px;
     transition: all 0.3s ease;
     position: relative;
+    visibility: visible !important; /* Force visibility */
+    opacity: 1 !important; /* Force opacity */
 }
 
 .tool-btn:hover {
@@ -176,7 +190,7 @@
 }
 
 #brushSize {
-    width: 80px;
+    width: 80px; /* Mobile-first: standard width */
     height: 6px;
     border-radius: 3px;
     background: rgba(255, 255, 255, 0.2);
@@ -511,6 +525,20 @@
         flex-direction: column;
         gap: 8px;
     }
+
+    /* Hide scrollbars visually but keep keyboard scrolling accessible */
+    .canvas-toolbar,
+    .canvas-toolbar * {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    .canvas-toolbar::-webkit-scrollbar,
+    .canvas-toolbar *::-webkit-scrollbar {
+        display: none; /* Chrome, Safari and Opera */
+        width: 0;
+        height: 0;
+    }
     
     .tool-group {
         width: 100%;
@@ -645,7 +673,7 @@
     height: 100%;
     cursor: col-resize;
     background: transparent;
-    z-index: 1000;
+    z-index: 1010; /* Higher than toolbar */
 }
 
 .canvas-resize-handle:hover {
@@ -669,10 +697,14 @@
     background: #ffd700;
 }
 
-/* Desktop only resize functionality */
+/* Desktop only resize functionality and left toolbar */
 @media (min-width: 769px) {
     .canvas-container {
         user-select: none;
+        bottom: 80px; /* Above controls bar on desktop */
+        height: calc(100vh - 140px); /* Account for header and controls */
+        flex-direction: row !important; /* Force row layout for desktop */
+        justify-content: flex-start; /* Align items to start */
     }
     
     .canvas-container.resizing {
@@ -681,6 +713,107 @@
     
     .canvas-container.resizing .canvas-resize-handle::before {
         background: #ffd700;
+    }
+    
+    .canvas-toolbar {
+        position: relative;
+        padding: 20px 8px;
+        background: linear-gradient(180deg, rgba(45, 45, 45, 0.98) 0%, rgba(35, 35, 35, 0.98) 100%);
+        border-right: 2px solid #2196F3;
+        border-bottom: none;
+        display: flex !important; /* Force display */
+        flex-direction: column !important; /* Force column layout */
+        flex-wrap: nowrap !important; /* Prevent wrapping */
+        gap: 12px; /* Gap between tool groups */
+        align-items: center;
+        width: 70px; /* Slightly wider to accommodate tools better */
+        min-width: 70px;
+        height: 100%;
+        overflow: visible !important; /* Disable scrollbars when content fits */
+        box-shadow: 2px 0 10px rgba(33, 150, 243, 0.2);
+        z-index: 1001; /* Lower z-index than resize handle */
+        visibility: visible !important; /* Force visibility */
+        opacity: 1 !important; /* Force opacity */
+        order: -1; /* Put toolbar first in flex order */
+    }
+    
+    .tool-group {
+        flex-direction: column !important; /* Force column layout */
+        width: 100%;
+        gap: 6px; /* Smaller gap within each group */
+        align-items: center;
+        display: flex !important; /* Ensure flex display */
+        flex-shrink: 0; /* Prevent shrinking */
+        flex-wrap: nowrap !important; /* Prevent wrapping */
+        justify-content: center; /* Center items */
+    }
+    
+    .tool-group:not(:last-child)::after {
+        content: '';
+        width: 80%; /* Horizontal separator */
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #2196F3, transparent);
+        margin: 8px 0; /* Vertical margin */
+        border-radius: 1px;
+        align-self: center;
+    }
+    
+    .tool-btn {
+        width: 40px;
+        height: 40px;
+        border: 2px solid rgba(33, 150, 243, 0.3);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(5px);
+        margin: 2px 0;
+    }
+    
+    .tool-btn:hover {
+        background: rgba(33, 150, 243, 0.2);
+        border-color: #2196F3;
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+    }
+    
+    .tool-btn.active {
+        background: linear-gradient(135deg, #2196F3, #1976D2);
+        border-color: #1976D2;
+        color: white;
+        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.5);
+    }
+    
+    .shared-canvas {
+        margin: 20px 20px 20px 0;
+        width: calc(100% - 110px); /* Account for wider toolbar (70px + margins) */
+        height: calc(100% - 40px);
+    }
+    
+    #brushSize {
+        width: 55px; /* Fit within the wider toolbar */
+        height: 20px;
+        border-radius: 10px;
+        background: rgba(33, 150, 243, 0.1);
+        border: 1px solid rgba(33, 150, 243, 0.3);
+        margin: 4px 0;
+    }
+    
+    #colorPicker {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 3px solid rgba(33, 150, 243, 0.4);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 2px 0;
+    }
+    
+    #colorPicker:hover {
+        border-color: #2196F3;
+        transform: scale(1.1);
+        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
     }
 }
 
@@ -696,6 +829,9 @@
         max-width: 100% !important;
         right: 0 !important;
         left: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+        top: 0 !important;
     }
     
     .canvas-toolbar {
@@ -705,6 +841,12 @@
     
     .tool-group {
         gap: 6px;
+    }
+    
+    .shared-canvas {
+        margin: 10px;
+        width: calc(100% - 20px);
+        height: calc(100% - 80px);
     }
     
     .tool-btn {
