@@ -47,6 +47,9 @@ class CanvasManager {
         this.setupCanvas();
         this.bindEvents();
         this.createTextModal();
+        
+        // Initialize UI indicators
+        this.updateBrushSizeIndicator();
     }
 
     setupCanvas() {
@@ -97,6 +100,8 @@ class CanvasManager {
         this.bindDrawingEvents();
         this.bindToolbarEvents();
         this.bindSocketEvents();
+        this.bindResizeEvents();
+        this.bindKeyboardShortcuts();
     }
 
     bindDrawingEvents() {
@@ -220,6 +225,143 @@ class CanvasManager {
         }
     }
 
+    bindResizeEvents() {
+        // Only enable resize on desktop
+        if (window.innerWidth <= 768) return;
+
+        const resizeHandle = document.getElementById('canvasResizeHandle');
+        const canvasContainer = document.getElementById('canvasContainer');
+        
+        if (!resizeHandle || !canvasContainer) return;
+
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        const startResize = (e) => {
+            isResizing = true;
+            startX = e.clientX || e.touches[0].clientX;
+            startWidth = parseInt(window.getComputedStyle(canvasContainer).width, 10);
+            
+            canvasContainer.classList.add('resizing');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            
+            e.preventDefault();
+        };
+
+        const doResize = (e) => {
+            if (!isResizing) return;
+            
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const dx = startX - clientX; // Dragging left increases width
+            const newWidth = Math.min(Math.max(startWidth + dx, 300), window.innerWidth * 0.8);
+            
+            canvasContainer.style.width = newWidth + 'px';
+            
+            // Resize canvas to match new container size
+            setTimeout(() => this.resizeCanvas(), 0);
+            
+            e.preventDefault();
+        };
+
+        const stopResize = () => {
+            if (!isResizing) return;
+            
+            isResizing = false;
+            canvasContainer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+
+        // Mouse events
+        resizeHandle.addEventListener('mousedown', startResize);
+        document.addEventListener('mousemove', doResize);
+        document.addEventListener('mouseup', stopResize);
+
+        // Touch events for tablets
+        resizeHandle.addEventListener('touchstart', startResize);
+        document.addEventListener('touchmove', doResize);
+        document.addEventListener('touchend', stopResize);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth <= 768) {
+                // Reset to mobile view
+                canvasContainer.style.width = '';
+            } else if (this.isActive) {
+                setTimeout(() => this.handleResize(), 100);
+            }
+        });
+    }
+
+    bindKeyboardShortcuts() {
+        // Only bind when canvas is active
+        const handleKeyPress = (e) => {
+            if (!this.isActive) return;
+            
+            // Don't interfere with text input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            const key = e.key.toLowerCase();
+            
+            switch (key) {
+                case 'p':
+                    this.selectTool('pen');
+                    this.setActiveTool(document.getElementById('penTool'));
+                    e.preventDefault();
+                    break;
+                case 'e':
+                    this.selectTool('eraser');
+                    this.setActiveTool(document.getElementById('eraserTool'));
+                    e.preventDefault();
+                    break;
+                case 't':
+                    this.selectTool('text');
+                    this.setActiveTool(document.getElementById('textTool'));
+                    e.preventDefault();
+                    break;
+                case 'l':
+                    this.selectTool('line');
+                    this.setActiveTool(document.getElementById('lineTool'));
+                    e.preventDefault();
+                    break;
+                case 'r':
+                    this.selectTool('rectangle');
+                    this.setActiveTool(document.getElementById('rectangleTool'));
+                    e.preventDefault();
+                    break;
+                case 'c':
+                    this.selectTool('circle');
+                    this.setActiveTool(document.getElementById('circleTool'));
+                    e.preventDefault();
+                    break;
+                case 'z':
+                    if (e.ctrlKey || e.metaKey) {
+                        this.undo();
+                        e.preventDefault();
+                    }
+                    break;
+                case '[':
+                    // Decrease brush size
+                    this.currentLineWidth = Math.max(1, this.currentLineWidth - 1);
+                    document.getElementById('brushSize').value = this.currentLineWidth;
+                    this.updateBrushSizeIndicator();
+                    e.preventDefault();
+                    break;
+                case ']':
+                    // Increase brush size
+                    this.currentLineWidth = Math.min(20, this.currentLineWidth + 1);
+                    document.getElementById('brushSize').value = this.currentLineWidth;
+                    this.updateBrushSizeIndicator();
+                    e.preventDefault();
+                    break;
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeyPress);
+    }
+
     selectTool(tool) {
         this.currentTool = tool;
         this.updateCursor();
@@ -255,6 +397,12 @@ class CanvasManager {
     }
 
     updateBrushSizeIndicator() {
+        // Update brush size indicator
+        const indicator = document.querySelector('.size-indicator');
+        if (indicator) {
+            indicator.textContent = this.currentLineWidth;
+        }
+        
         // Update cursor size preview
         const cursor = document.querySelector('.canvas-cursor');
         if (cursor) {

@@ -23,6 +23,17 @@ class EduMeet {
         this.isCanvasActive = false;
         this.pinnedParticipant = null;
         
+        // Screen sharing state
+        this.isScreenSharing = false;
+        this.screenStream = null;
+        
+        // Recording state
+        this.isRecording = false;
+        this.mediaRecorder = null;
+        this.recordedChunks = [];
+        this.recordingStartTime = null;
+        this.recordingTimer = null;
+        
         this.init();
     }
 
@@ -514,6 +525,16 @@ class EduMeet {
         this.replaceVideoTileStream('local', stream);
     }
 
+    updateLocalVideoTile(stream) {
+        this.replaceVideoTileStream('local', stream);
+        
+        // Update the local video stream reference
+        if (this.localVideoStream && this.localVideoStream !== stream) {
+            this.localVideoStream.getTracks().forEach(track => track.stop());
+        }
+        this.localVideoStream = stream;
+    }
+
     showMeetingRoom() {
         document.getElementById('joinScreen').classList.add('hidden');
         document.getElementById('meetingRoom').classList.remove('hidden');
@@ -643,6 +664,10 @@ class EduMeet {
 
         videoGrid.appendChild(videoTile);
         console.log(`Created new video tile for ${participantId}`);
+        
+        // Apply layout stabilization after adding new tile
+        this.stabilizeVideoLayout();
+        
         return videoTile;
     }
 
@@ -674,6 +699,9 @@ class EduMeet {
         const videoTile = document.getElementById(`video-${participantId}`);
         if (videoTile) {
             videoTile.remove();
+            
+            // Apply layout stabilization after removing tile
+            this.stabilizeVideoLayout();
         }
     }
 
@@ -872,39 +900,84 @@ class EduMeet {
         
         try {
             if (!this.isScreenSharing) {
-                // Start screen sharing
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                    audio: true
-                });
-
-                // Replace video track
-                if (this.localVideoStream) {
-                    const videoTrack = screenStream.getVideoTracks()[0];
-                    const sender = this.peerConnection?.getSenders().find(s => 
-                        s.track && s.track.kind === 'video'
-                    );
-                    
-                    if (sender) {
-                        await sender.replaceTrack(videoTrack);
-                    }
-                }
-
-                this.isScreenSharing = true;
-                button.classList.add('active');
-                this.showNotification('Screen sharing started', 'success');
-
-                // Listen for screen share end
-                screenStream.getVideoTracks()[0].addEventListener('ended', () => {
-                    this.stopScreenShare();
-                });
-
+                await this.startScreenShare();
             } else {
-                this.stopScreenShare();
+                await this.stopScreenShare();
             }
         } catch (error) {
             console.error('Error toggling screen share:', error);
-            this.showNotification('Could not start screen sharing', 'error');
+            let errorMessage = 'Could not start screen sharing';
+            
+            if (error.name === 'NotAllowedError') {
+                errorMessage = 'Screen sharing permission denied';
+            } else if (error.name === 'NotSupportedError') {
+                errorMessage = 'Screen sharing not supported';
+            }
+            
+            this.showNotification(errorMessage, 'error');
+        }
+    }
+
+    async startScreenShare() {
+        const button = document.getElementById('shareScreen');
+        
+        // Check for browser support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+            throw new Error('Screen sharing not supported in this browser');
+        }
+        
+        try {
+            // Request screen sharing permission
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    cursor: 'always',
+                    frameRate: { ideal: 30, max: 60 }
+                },
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true
+                }
+            });
+
+            this.screenStream = screenStream;
+
+            // Use WebRTC manager if available
+            if (this.webrtcManager) {
+                await this.webrtcManager.replaceVideoTrack(screenStream.getVideoTracks()[0]);
+                if (screenStream.getAudioTracks().length > 0) {
+                    await this.webrtcManager.replaceAudioTrack(screenStream.getAudioTracks()[0]);
+                }
+            } else {
+                // Fallback: Update local video tile directly
+                this.updateLocalVideoTile(screenStream);
+            }
+
+            this.isScreenSharing = true;
+            button.classList.add('active', 'screen-sharing');
+            button.title = 'Stop screen sharing';
+            
+            // Add screen sharing indicator to local video tile
+            const localTile = document.getElementById('video-local');
+            if (localTile) {
+                localTile.classList.add('screen-sharing');
+            }
+            
+            this.showNotification('Screen sharing started', 'success');
+
+            // Listen for screen share end (user clicks stop in browser)
+            screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+                this.stopScreenShare();
+            });
+
+            // Notify other participants via socket
+            if (this.socketHandler) {
+                this.socketHandler.socket.emit('screen-share-started', {
+                    participantId: 'local'
+                });
+            }
+
+        } catch (error) {
+            throw error; // Re-throw to be handled by toggleScreenShare
         }
     }
 
@@ -912,33 +985,311 @@ class EduMeet {
         const button = document.getElementById('shareScreen');
         
         try {
-            // Get original camera stream
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: this.isVideoEnabled,
-                audio: this.isAudioEnabled 
-            });
+            // Stop screen stream tracks
+            if (this.screenStream) {
+                this.screenStream.getTracks().forEach(track => track.stop());
+                this.screenStream = null;
+            }
 
-            // Replace screen share with camera
-            if (stream) {
-                const videoTrack = stream.getVideoTracks()[0];
-                const sender = this.peerConnection?.getSenders().find(s => 
-                    s.track && s.track.kind === 'video'
-                );
-                
-                if (sender && videoTrack) {
-                    await sender.replaceTrack(videoTrack);
+            // Get original camera stream back
+            if (this.isVideoEnabled || this.isAudioEnabled) {
+                const constraints = {
+                    video: this.isVideoEnabled ? {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 30 }
+                    } : false,
+                    audio: this.isAudioEnabled ? {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 48000
+                    } : false
+                };
+
+                const originalStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                // Use WebRTC manager if available
+                if (this.webrtcManager) {
+                    if (originalStream.getVideoTracks().length > 0) {
+                        await this.webrtcManager.replaceVideoTrack(originalStream.getVideoTracks()[0]);
+                    }
+                    if (originalStream.getAudioTracks().length > 0) {
+                        await this.webrtcManager.replaceAudioTrack(originalStream.getAudioTracks()[0]);
+                    }
+                } else {
+                    // Fallback: Update local video tile directly
+                    this.updateLocalVideoTile(originalStream);
                 }
-                
-                this.localVideoStream = stream;
+
+                this.localVideoStream = originalStream;
             }
 
             this.isScreenSharing = false;
-            button.classList.remove('active');
+            button.classList.remove('active', 'screen-sharing');
+            button.title = 'Share screen';
+            
+            // Remove screen sharing indicator from local video tile
+            const localTile = document.getElementById('video-local');
+            if (localTile) {
+                localTile.classList.remove('screen-sharing');
+            }
+            
             this.showNotification('Screen sharing stopped', 'info');
+
+            // Notify other participants via socket
+            if (this.socketHandler) {
+                this.socketHandler.socket.emit('screen-share-stopped', {
+                    participantId: 'local'
+                });
+            }
             
         } catch (error) {
             console.error('Error stopping screen share:', error);
+            this.showNotification('Error stopping screen share', 'error');
         }
+    }
+
+    async toggleRecording() {
+        if (!this.isTeacher) {
+            this.showNotification('Only teachers can record sessions', 'error');
+            return;
+        }
+
+        try {
+            if (!this.isRecording) {
+                await this.startRecording();
+            } else {
+                await this.stopRecording();
+            }
+        } catch (error) {
+            console.error('Error toggling recording:', error);
+            let errorMessage = 'Could not start recording';
+            
+            if (error.name === 'NotSupportedError') {
+                errorMessage = 'Recording not supported in this browser';
+            } else if (error.name === 'NotAllowedError') {
+                errorMessage = 'Recording permission denied';
+            }
+            
+            this.showNotification(errorMessage, 'error');
+        }
+    }
+
+    async startRecording() {
+        const button = document.getElementById('recordSession');
+        
+        // Check for browser support
+        if (!window.MediaRecorder) {
+            throw new Error('Recording not supported in this browser');
+        }
+
+        try {
+            // Get the canvas stream for recording the entire meeting
+            let recordingStream;
+            
+            if (this.isScreenSharing && this.screenStream) {
+                // If screen sharing, record the screen share
+                recordingStream = this.screenStream;
+            } else {
+                // Record the entire meeting by capturing the video grid
+                const videoGrid = document.getElementById('videoGrid');
+                if (videoGrid) {
+                    // Create a canvas to composite all video tiles
+                    recordingStream = await this.createCompositeStream();
+                } else {
+                    // Fallback to screen capture
+                    recordingStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            mediaSource: 'screen',
+                            frameRate: { ideal: 30 }
+                        },
+                        audio: true
+                    });
+                }
+            }
+
+            // Setup MediaRecorder
+            const options = {
+                mimeType: this.getSupportedMimeType()
+            };
+
+            this.mediaRecorder = new MediaRecorder(recordingStream, options);
+            this.recordedChunks = [];
+
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.recordedChunks.push(event.data);
+                }
+            };
+
+            this.mediaRecorder.onstop = () => {
+                this.saveRecording();
+            };
+
+            this.mediaRecorder.onerror = (event) => {
+                console.error('MediaRecorder error:', event.error);
+                this.showNotification('Recording error occurred', 'error');
+            };
+
+            // Start recording
+            this.mediaRecorder.start(1000); // Collect data every second
+            
+            this.isRecording = true;
+            button.classList.add('active', 'recording');
+            button.title = 'Stop recording';
+            
+            this.showNotification('Recording started', 'success');
+
+            // Add recording indicator to UI
+            this.recordingStartTime = Date.now();
+            this.showRecordingIndicator();
+            this.startRecordingTimer();
+
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async stopRecording() {
+        const button = document.getElementById('recordSession');
+        
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+        }
+
+        this.isRecording = false;
+        button.classList.remove('active', 'recording');
+        button.title = 'Start recording';
+        
+        this.hideRecordingIndicator();
+        this.stopRecordingTimer();
+        this.showNotification('Recording stopped. Preparing download...', 'info');
+    }
+
+    async createCompositeStream() {
+        try {
+            // First try to capture the browser tab containing the meeting
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    mediaSource: 'browser',
+                    frameRate: { ideal: 30 },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: true
+            });
+            
+            return displayStream;
+        } catch (error) {
+            // Fallback to general screen capture
+            console.log('Browser tab capture not available, using screen capture');
+            return await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    frameRate: { ideal: 30 },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: true
+            });
+        }
+    }
+
+    getSupportedMimeType() {
+        const types = [
+            'video/webm;codecs=vp9,opus',
+            'video/webm;codecs=vp8,opus',
+            'video/webm;codecs=h264,opus',
+            'video/webm',
+            'video/mp4'
+        ];
+
+        for (const type of types) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+        return 'video/webm'; // fallback
+    }
+
+    saveRecording() {
+        if (this.recordedChunks.length === 0) {
+            this.showNotification('No recording data to save', 'warning');
+            return;
+        }
+
+        const blob = new Blob(this.recordedChunks, {
+            type: this.getSupportedMimeType()
+        });
+
+        const url = URL.createObjectURL(blob);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `meeting-recording-${timestamp}.webm`;
+
+        // Create download link
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+
+        this.showNotification(`Recording saved as ${filename}`, 'success');
+        this.recordedChunks = [];
+    }
+
+    showRecordingIndicator() {
+        // Create recording indicator
+        let indicator = document.getElementById('recordingIndicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'recordingIndicator';
+            indicator.className = 'recording-indicator';
+            indicator.innerHTML = `
+                <div class="recording-dot"></div>
+                <span>REC</span>
+                <span class="recording-duration">00:00</span>
+            `;
+            document.body.appendChild(indicator);
+        }
+        indicator.classList.add('active');
+    }
+
+    hideRecordingIndicator() {
+        const indicator = document.getElementById('recordingIndicator');
+        if (indicator) {
+            indicator.classList.remove('active');
+        }
+    }
+
+    startRecordingTimer() {
+        this.recordingTimer = setInterval(() => {
+            if (this.recordingStartTime) {
+                const elapsed = Date.now() - this.recordingStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const durationElement = document.querySelector('.recording-duration');
+                if (durationElement) {
+                    durationElement.textContent = timeString;
+                }
+            }
+        }, 1000);
+    }
+
+    stopRecordingTimer() {
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
+        }
+        this.recordingStartTime = null;
     }
 
     raiseHand() {
@@ -1252,6 +1603,17 @@ class EduMeet {
             this.localVideoStream.getTracks().forEach(track => track.stop());
         }
 
+        // Stop screen sharing streams
+        if (this.screenStream) {
+            this.screenStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Stop recording
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+        }
+        this.stopRecordingTimer();
+
         // Close socket connection
         if (this.socketHandler) {
             this.socketHandler.disconnect();
@@ -1334,6 +1696,27 @@ class EduMeet {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
         }, duration);
+    }
+
+    // Layout stabilization method
+    stabilizeVideoLayout() {
+        const videoGrid = document.getElementById('videoGrid');
+        if (!videoGrid || !this.uiControls) return;
+        
+        // Temporarily disable transitions to prevent layout shifts
+        videoGrid.classList.add('stable');
+        
+        // Reapply current layout after a brief delay
+        setTimeout(() => {
+            if (this.uiControls && this.uiControls.gridLayout) {
+                this.uiControls.switchLayout(this.uiControls.gridLayout);
+            }
+            
+            // Re-enable transitions
+            setTimeout(() => {
+                videoGrid.classList.remove('stable');
+            }, 100);
+        }, 50);
     }
 
     // Public API methods for other components

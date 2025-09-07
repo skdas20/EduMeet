@@ -1318,3 +1318,209 @@ body {
         height: 36px;
     }
 }
+
+/* Layout System Fixes */
+.video-grid {
+    transition: grid-template-columns 0.3s ease, grid-template-rows 0.3s ease;
+    position: relative;
+}
+
+/* Stable video positioning */
+.video-tile {
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+/* Layout-specific styles */
+.video-grid.layout-auto {
+    grid-auto-rows: minmax(180px, 1fr);
+}
+
+.video-grid.layout-grid {
+    grid-auto-rows: minmax(200px, 1fr);
+}
+
+.video-grid.layout-spotlight {
+    grid-template-rows: 1fr auto;
+    gap: 8px;
+}
+
+/* Spotlight layout specific styles */
+.video-tile.spotlight-main {
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.video-tile.spotlight-thumbnail {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.video-tile.spotlight-thumbnail:hover {
+    border: 1px solid #ffd700;
+    cursor: pointer;
+}
+
+/* Thumbnails container */
+.thumbnails-container {
+    scrollbar-width: thin;
+    scrollbar-color: #ffd700 rgba(255, 255, 255, 0.1);
+}
+
+.thumbnails-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.thumbnails-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.thumbnails-container::-webkit-scrollbar-thumb {
+    background: #ffd700;
+    border-radius: 2px;
+}
+
+.thumbnails-container::-webkit-scrollbar-thumb:hover {
+    background: #ffed4a;
+}
+
+.video-grid.layout-spotlight .spotlight-thumbnail .participant-info {
+    font-size: 10px;
+    padding: 2px 4px;
+}
+
+.video-grid.layout-spotlight .spotlight-thumbnail .avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+}
+
+/* Layout buttons styling */
+.layout-switcher {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.layout-btn {
+    min-width: 40px !important;
+    position: relative;
+}
+
+.layout-btn.active {
+    background: rgba(255, 215, 0, 0.2) !important;
+    color: #ffd700 !important;
+}
+
+.layout-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 2px;
+    background: #ffd700;
+    border-radius: 1px;
+}
+
+/* Prevent layout shift animations on participant changes */
+.video-grid.stable {
+    transition: none !important;
+}
+
+.video-grid.stable .video-tile {
+    transition: none !important;
+}
+
+/* Screen sharing styles */
+.video-tile.screen-sharing {
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.video-tile.screen-sharing::after {
+    content: "Screen Sharing";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 255, 0, 0.9);
+    color: #000;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+.control-btn.screen-sharing {
+    background: #00ff00 !important;
+    color: #000 !important;
+}
+
+.control-btn.screen-sharing:hover {
+    background: #00cc00 !important;
+}
+
+/* Recording styles */
+.control-btn.recording {
+    background: #ff0000 !important;
+    color: #fff !important;
+    animation: recordingPulse 2s ease-in-out infinite;
+}
+
+.control-btn.recording:hover {
+    background: #cc0000 !important;
+}
+
+@keyframes recordingPulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.7; 
+        transform: scale(1.05);
+    }
+}
+
+/* Recording indicator */
+.recording-indicator {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 0, 0, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.recording-indicator.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.recording-dot {
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    animation: recordingBlink 1s ease-in-out infinite;
+}
+
+@keyframes recordingBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}

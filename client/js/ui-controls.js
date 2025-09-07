@@ -125,11 +125,17 @@ class UIControls {
 
     bindRecordingControls() {
         const recordBtn = document.getElementById('recordSession');
-        if (recordBtn && this.app.isTeacher) {
-            recordBtn.disabled = false;
-            recordBtn.addEventListener('click', () => {
-                this.toggleRecording();
-            });
+        if (recordBtn) {
+            // Enable for teachers, show disabled state for students
+            if (this.app.isTeacher) {
+                recordBtn.disabled = false;
+                recordBtn.addEventListener('click', () => {
+                    this.app.toggleRecording();
+                });
+            } else {
+                recordBtn.disabled = true;
+                recordBtn.title = 'Only teachers can record sessions';
+            }
         }
     }
 
@@ -325,6 +331,9 @@ class UIControls {
         
         if (!videoGrid) return;
         
+        // Reset all video tiles to default state first
+        this.resetVideoTiles();
+        
         // Remove existing layout classes
         videoGrid.classList.remove('layout-auto', 'layout-grid', 'layout-spotlight');
         
@@ -350,20 +359,36 @@ class UIControls {
         const videoGrid = document.getElementById('videoGrid');
         const videoCount = videoGrid.children.length;
         
+        // Apply stable auto-layout without causing layout shifts
+        videoGrid.style.transition = 'grid-template-columns 0.3s ease';
+        
         if (videoCount <= 1) {
             videoGrid.style.gridTemplateColumns = '1fr';
         } else if (videoCount <= 4) {
             videoGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        } else if (videoCount <= 9) {
+        } else if (videoCount <= 6) {
             videoGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
         } else {
-            videoGrid.style.gridTemplateColumns = 'repeat(4, 1fr)';
+            videoGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
         }
+        
+        // Reset any problematic styles from other layouts
+        Array.from(videoGrid.children).forEach(tile => {
+            tile.style.display = 'block';
+            tile.style.gridRow = 'auto';
+        });
     }
 
     applyGridLayout() {
         const videoGrid = document.getElementById('videoGrid');
-        videoGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+        videoGrid.style.transition = 'grid-template-columns 0.3s ease';
+        videoGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(280px, 1fr))';
+        
+        // Reset any problematic styles from other layouts
+        Array.from(videoGrid.children).forEach(tile => {
+            tile.style.display = 'block';
+            tile.style.gridRow = 'auto';
+        });
     }
 
     applySpotlightLayout() {
@@ -374,20 +399,151 @@ class UIControls {
                            videoGrid.querySelector('.video-tile');
         
         if (pinnedVideo) {
-            videoGrid.style.gridTemplateColumns = '1fr';
+            const videoCount = videoGrid.children.length;
             
-            // Move spotlight video to front
-            videoGrid.insertBefore(pinnedVideo, videoGrid.firstChild);
-            
-            // Hide other videos or show as thumbnails
-            Array.from(videoGrid.children).forEach((tile, index) => {
-                if (index === 0) {
+            if (videoCount > 1) {
+                // Create a simple spotlight layout
+                videoGrid.style.gridTemplateColumns = '1fr';
+                videoGrid.style.gridTemplateRows = '3fr auto';
+                videoGrid.style.gap = '8px';
+                
+                // Move spotlight video to front
+                if (pinnedVideo !== videoGrid.firstElementChild) {
+                    videoGrid.insertBefore(pinnedVideo, videoGrid.firstChild);
+                }
+                
+                // Create thumbnails container
+                let thumbnailsContainer = videoGrid.querySelector('.thumbnails-container');
+                if (!thumbnailsContainer) {
+                    thumbnailsContainer = document.createElement('div');
+                    thumbnailsContainer.className = 'thumbnails-container';
+                    thumbnailsContainer.style.cssText = `
+                        display: flex;
+                        gap: 8px;
+                        overflow-x: auto;
+                        padding: 8px;
+                        justify-content: center;
+                        flex-wrap: wrap;
+                        grid-column: 1;
+                        grid-row: 2;
+                        background: rgba(0,0,0,0.1);
+                        border-radius: 8px;
+                        max-height: 120px;
+                    `;
+                    videoGrid.appendChild(thumbnailsContainer);
+                }
+                
+                // Clear thumbnails container
+                thumbnailsContainer.innerHTML = '';
+                
+                // Style videos for spotlight mode
+                Array.from(videoGrid.children).forEach((tile, index) => {
+                    if (tile === thumbnailsContainer) return;
+                    
                     tile.style.display = 'block';
-                    tile.style.gridRow = '1 / -1';
-                } else {
-                    tile.style.display = 'none'; // Or implement thumbnail view
+                    if (index === 0) {
+                        // Main spotlight video
+                        tile.style.gridColumn = '1';
+                        tile.style.gridRow = '1';
+                        tile.classList.add('spotlight-main');
+                    } else {
+                        // Move thumbnails to container
+                        tile.style.gridColumn = '';
+                        tile.style.gridRow = '';
+                        tile.style.width = '120px';
+                        tile.style.height = '90px';
+                        tile.style.flexShrink = '0';
+                        tile.classList.add('spotlight-thumbnail');
+                        
+                        // Add click handler to switch spotlight
+                        tile.addEventListener('click', () => {
+                            this.switchSpotlight(tile);
+                        });
+                        
+                        thumbnailsContainer.appendChild(tile);
+                    }
+                });
+            } else {
+                // Single video - full screen
+                videoGrid.style.gridTemplateColumns = '1fr';
+                videoGrid.style.gridTemplateRows = '1fr';
+                pinnedVideo.style.gridColumn = '1';
+                pinnedVideo.style.gridRow = '1';
+                pinnedVideo.classList.add('spotlight-main');
+            }
+        }
+    }
+
+    resetVideoTiles() {
+        const videoGrid = document.getElementById('videoGrid');
+        if (!videoGrid) return;
+        
+        // Remove thumbnails container if it exists
+        const thumbnailsContainer = videoGrid.querySelector('.thumbnails-container');
+        if (thumbnailsContainer) {
+            // Move all video tiles back to main grid
+            Array.from(thumbnailsContainer.children).forEach(tile => {
+                if (tile.classList.contains('video-tile')) {
+                    videoGrid.appendChild(tile);
                 }
             });
+            thumbnailsContainer.remove();
+        }
+        
+        // Reset all video tiles to default state
+        Array.from(videoGrid.children).forEach(tile => {
+            if (!tile.classList.contains('video-tile')) return;
+            
+            // Clear layout-specific styles
+            tile.style.display = 'block';
+            tile.style.gridColumn = 'auto';
+            tile.style.gridRow = 'auto';
+            tile.style.maxHeight = '';
+            tile.style.width = '';
+            tile.style.height = '';
+            tile.style.float = '';
+            tile.style.margin = '';
+            tile.style.flexShrink = '';
+            
+            // Remove layout-specific classes
+            tile.classList.remove('spotlight-main', 'spotlight-thumbnail');
+        });
+        
+        // Reset grid styles
+        videoGrid.style.gridTemplateRows = '';
+        videoGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(320px, 1fr))';
+        videoGrid.style.gap = '4px';
+    }
+
+    switchSpotlight(clickedTile) {
+        const videoGrid = document.getElementById('videoGrid');
+        const currentMain = videoGrid.querySelector('.video-tile.spotlight-main');
+        const thumbnailsContainer = videoGrid.querySelector('.thumbnails-container');
+        
+        if (currentMain && clickedTile && thumbnailsContainer) {
+            // Remove spotlight classes
+            currentMain.classList.remove('spotlight-main');
+            clickedTile.classList.remove('spotlight-thumbnail');
+            
+            // Reset styles for current main
+            currentMain.style.gridColumn = '';
+            currentMain.style.gridRow = '';
+            currentMain.style.width = '120px';
+            currentMain.style.height = '90px';
+            currentMain.style.flexShrink = '0';
+            currentMain.classList.add('spotlight-thumbnail');
+            
+            // Set new main video
+            clickedTile.style.gridColumn = '1';
+            clickedTile.style.gridRow = '1';
+            clickedTile.style.width = '';
+            clickedTile.style.height = '';
+            clickedTile.style.flexShrink = '';
+            clickedTile.classList.add('spotlight-main');
+            
+            // Move videos to correct positions
+            videoGrid.insertBefore(clickedTile, videoGrid.firstChild);
+            thumbnailsContainer.appendChild(currentMain);
         }
     }
 
@@ -536,21 +692,6 @@ class UIControls {
         menu.style.top = Math.max(10, y) + 'px';
     }
 
-    // Recording Management
-    toggleRecording() {
-        if (!this.app.isTeacher) return;
-        
-        const recordBtn = document.getElementById('recordSession');
-        const isRecording = recordBtn.classList.contains('active');
-        
-        if (isRecording) {
-            this.app.socketHandler.stopRecording();
-            recordBtn.classList.remove('active');
-        } else {
-            this.app.socketHandler.startRecording();
-            recordBtn.classList.add('active');
-        }
-    }
 
     // Breakout Room Management
     showBreakoutRoomDialog() {
@@ -741,7 +882,9 @@ class UIControls {
             'h': { action: () => this.app.raiseHand(), description: 'Raise Hand' },
             '1': { action: () => this.switchLayout('auto'), description: 'Auto Layout' },
             '2': { action: () => this.switchLayout('grid'), description: 'Grid Layout' },
-            '3': { action: () => this.switchLayout('spotlight'), description: 'Spotlight Layout' }
+            '3': { action: () => this.switchLayout('spotlight'), description: 'Spotlight Layout' },
+            'shift+s': { action: () => this.app.toggleScreenShare(), description: 'Toggle Screen Share' },
+            'r': { action: () => this.app.toggleRecording(), description: 'Toggle Recording (Teachers only)' }
         };
         
         // Add shortcut hints to UI
@@ -767,7 +910,8 @@ class UIControls {
             's': '#shareScreen',
             'c': '#toggleChat',
             'p': '#toggleParticipants',
-            'h': '#raiseHand'
+            'h': '#raiseHand',
+            'r': '#recordSession'
         };
         
         return document.querySelector(mapping[key]);

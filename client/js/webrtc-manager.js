@@ -439,6 +439,77 @@ class WebRTCManager {
         }, 3000);
     }
 
+    async replaceVideoTrack(newVideoTrack) {
+        if (!this.localStream) return;
+
+        try {
+            // Replace video track in local stream
+            const oldVideoTrack = this.localStream.getVideoTracks()[0];
+            if (oldVideoTrack) {
+                this.localStream.removeTrack(oldVideoTrack);
+                oldVideoTrack.stop();
+            }
+            
+            if (newVideoTrack) {
+                this.localStream.addTrack(newVideoTrack);
+            }
+
+            // Update all peer connections
+            for (const [participantId, peerConnection] of this.peerConnections) {
+                const sender = peerConnection.getSenders().find(s => 
+                    s.track && s.track.kind === 'video'
+                );
+                
+                if (sender && newVideoTrack) {
+                    await sender.replaceTrack(newVideoTrack);
+                    console.log(`Replaced video track for ${participantId}`);
+                }
+            }
+
+            // Update local video tile
+            if (this.app.updateLocalVideoTile) {
+                this.app.updateLocalVideoTile(this.localStream);
+            }
+
+        } catch (error) {
+            console.error('Error replacing video track:', error);
+            throw error;
+        }
+    }
+
+    async replaceAudioTrack(newAudioTrack) {
+        if (!this.localStream) return;
+
+        try {
+            // Replace audio track in local stream
+            const oldAudioTrack = this.localStream.getAudioTracks()[0];
+            if (oldAudioTrack) {
+                this.localStream.removeTrack(oldAudioTrack);
+                oldAudioTrack.stop();
+            }
+            
+            if (newAudioTrack) {
+                this.localStream.addTrack(newAudioTrack);
+            }
+
+            // Update all peer connections
+            for (const [participantId, peerConnection] of this.peerConnections) {
+                const sender = peerConnection.getSenders().find(s => 
+                    s.track && s.track.kind === 'audio'
+                );
+                
+                if (sender && newAudioTrack) {
+                    await sender.replaceTrack(newAudioTrack);
+                    console.log(`Replaced audio track for ${participantId}`);
+                }
+            }
+
+        } catch (error) {
+            console.error('Error replacing audio track:', error);
+            throw error;
+        }
+    }
+
     cleanup() {
         this.peerConnections.forEach((pc, participantId) => {
             this.closePeerConnection(participantId);

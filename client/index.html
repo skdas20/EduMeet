@@ -149,39 +149,41 @@
 
             <!-- Canvas Overlay -->
             <div id="canvasContainer" class="canvas-container hidden">
+                <div class="canvas-resize-handle" id="canvasResizeHandle"></div>
                 <canvas id="sharedCanvas" class="shared-canvas"></canvas>
                 <div class="canvas-toolbar">
                     <div class="tool-group">
-                        <button id="penTool" class="tool-btn active" data-tool="pen">
+                        <button id="penTool" class="tool-btn active" data-tool="pen" title="Pen Tool (P)">
                             <i class="fas fa-pen"></i>
                         </button>
-                        <button id="eraserTool" class="tool-btn" data-tool="eraser">
+                        <button id="eraserTool" class="tool-btn" data-tool="eraser" title="Eraser Tool (E)">
                             <i class="fas fa-eraser"></i>
                         </button>
-                        <button id="textTool" class="tool-btn" data-tool="text">
+                        <button id="textTool" class="tool-btn" data-tool="text" title="Text Tool (T)">
                             <i class="fas fa-font"></i>
                         </button>
-                        <button id="lineTool" class="tool-btn" data-tool="line">
+                        <button id="lineTool" class="tool-btn" data-tool="line" title="Line Tool (L)">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <button id="rectangleTool" class="tool-btn" data-tool="rectangle">
+                        <button id="rectangleTool" class="tool-btn" data-tool="rectangle" title="Rectangle Tool (R)">
                             <i class="fas fa-square"></i>
                         </button>
-                        <button id="circleTool" class="tool-btn" data-tool="circle">
+                        <button id="circleTool" class="tool-btn" data-tool="circle" title="Circle Tool (C)">
                             <i class="fas fa-circle"></i>
                         </button>
                     </div>
                     
                     <div class="tool-group">
-                        <input type="color" id="colorPicker" value="#000000">
-                        <input type="range" id="brushSize" min="1" max="20" value="3">
+                        <input type="color" id="colorPicker" value="#000000" title="Color Picker">
+                        <input type="range" id="brushSize" min="1" max="20" value="3" title="Brush Size">
+                        <span class="size-indicator">3</span>
                     </div>
                     
                     <div class="tool-group">
-                        <button id="clearCanvas" class="tool-btn danger">
+                        <button id="clearCanvas" class="tool-btn danger" title="Clear Canvas">
                             <i class="fas fa-trash"></i>
                         </button>
-                        <button id="undoCanvas" class="tool-btn">
+                        <button id="undoCanvas" class="tool-btn" title="Undo (Ctrl+Z)">
                             <i class="fas fa-undo"></i>
                         </button>
                     </div>
