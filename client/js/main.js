@@ -1078,7 +1078,7 @@ class EduMeet {
                     const closeBtn = document.createElement('button');
                     closeBtn.className = 'pinned-close-btn';
                     closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-                    closeBtn.onclick = () => this.unpinParticipant();
+                    closeBtn.onclick = () => this.togglePinParticipant(this.pinnedParticipant);
                     
                     // Clear and populate pinned video container
                     pinnedVideo.innerHTML = '';
@@ -1891,10 +1891,15 @@ class EduMeet {
             });
         }
         
-        // Always add current user first
-        const allParticipants = [];
+        // Start with participants array and add current user at the front
+        let allParticipants = [...(participants || [])];
+        
+        // Remove any existing current user entries to prevent duplicates
+        allParticipants = allParticipants.filter(p => p.id !== this.currentUser?.id);
+        
+        // Always add current user at the front if they exist
         if (this.currentUser && this.currentUser.id) {
-            allParticipants.push({
+            allParticipants.unshift({
                 id: this.currentUser.id,
                 name: this.currentUser.name,
                 isTeacher: this.isTeacher,
@@ -1903,14 +1908,9 @@ class EduMeet {
             });
         }
         
-        // Add other participants (excluding duplicates)
-        participants.forEach(participant => {
-            if (participant.id !== this.currentUser?.id) {
-                allParticipants.push(participant);
-            }
-        });
-        
-        console.log(`Total participants to display: ${allParticipants.length}`);
+        // Debug info
+        console.log(`Current user: ${this.currentUser?.name} (${this.currentUser?.id})`);
+        console.log(`Other participants: ${allParticipants.slice(1).map(p => p.name).join(', ')}`);
         console.log('All participants:', allParticipants.map(p => `${p.name} (${p.id})`));
         
         allParticipants.forEach(participant => {
@@ -1939,19 +1939,58 @@ class EduMeet {
             const controls = document.createElement('div');
             controls.className = 'participant-controls';
 
-            // Audio indicator
+            // Audio/Video status indicators
+            const statusIndicators = document.createElement('div');
+            statusIndicators.className = 'status-indicators';
+
             if (!participant.hasAudio) {
                 const micBtn = document.createElement('button');
-                micBtn.className = 'muted';
+                micBtn.className = 'status-indicator muted';
                 micBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-                controls.appendChild(micBtn);
+                micBtn.title = 'Microphone muted';
+                statusIndicators.appendChild(micBtn);
             }
 
-            // Video indicator
             if (!participant.hasVideo) {
                 const videoBtn = document.createElement('button');
+                videoBtn.className = 'status-indicator video-off';
                 videoBtn.innerHTML = '<i class="fas fa-video-slash"></i>';
-                controls.appendChild(videoBtn);
+                videoBtn.title = 'Camera off';
+                statusIndicators.appendChild(videoBtn);
+            }
+
+            controls.appendChild(statusIndicators);
+
+            // Moderator controls - only show for creator/teacher and not for themselves
+            if (this.isTeacher && participant.id !== this.currentUser?.id) {
+                const moderatorControls = document.createElement('div');
+                moderatorControls.className = 'moderator-controls';
+
+                // Mute/Unmute participant button
+                const muteBtn = document.createElement('button');
+                muteBtn.className = `moderator-btn mute-btn ${participant.hasAudio ? 'active' : 'inactive'}`;
+                muteBtn.innerHTML = participant.hasAudio ? '<i class="fas fa-microphone-slash"></i>' : '<i class="fas fa-microphone"></i>';
+                muteBtn.title = participant.hasAudio ? 'Mute participant' : 'Unmute participant';
+                muteBtn.onclick = () => this.toggleParticipantAudio(participant.id, participant.hasAudio);
+
+                // Disable/Enable video button
+                const videoToggleBtn = document.createElement('button');
+                videoToggleBtn.className = `moderator-btn video-btn ${participant.hasVideo ? 'active' : 'inactive'}`;
+                videoToggleBtn.innerHTML = participant.hasVideo ? '<i class="fas fa-video-slash"></i>' : '<i class="fas fa-video"></i>';
+                videoToggleBtn.title = participant.hasVideo ? 'Disable participant video' : 'Enable participant video';
+                videoToggleBtn.onclick = () => this.toggleParticipantVideo(participant.id, participant.hasVideo);
+
+                // Remove participant button
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'moderator-btn remove-btn';
+                removeBtn.innerHTML = '<i class="fas fa-user-times"></i>';
+                removeBtn.title = 'Remove participant from meeting';
+                removeBtn.onclick = () => this.removeParticipant(participant.id, participant.name);
+
+                moderatorControls.appendChild(muteBtn);
+                moderatorControls.appendChild(videoToggleBtn);
+                moderatorControls.appendChild(removeBtn);
+                controls.appendChild(moderatorControls);
             }
 
             participantItem.appendChild(avatar);
@@ -1969,6 +2008,97 @@ class EduMeet {
         }
         console.log('=== END updateParticipantsList ===');
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MODERATOR CONTROLS - Creator/Teacher Authority Functions
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    toggleParticipantAudio(participantId, currentAudioState) {
+        console.log(`🔇 Moderator toggling audio for participant ${participantId}, current state: ${currentAudioState}`);
+        
+        if (!this.isTeacher) {
+            this.showNotification('You do not have permission to control other participants', 'error');
+            return;
+        }
+
+        const action = currentAudioState ? 'mute' : 'unmute';
+        console.log(`SENDING ${action} command for participant ${participantId}`);
+        
+        const payload = {
+            targetParticipantId: participantId,
+            mute: currentAudioState, // If they have audio, we want to mute them (mute: true)
+            moderatorId: this.currentUser.id,
+            moderatorName: this.currentUser.name
+        };
+        console.log('🔇 SENDING moderatorMuteParticipant payload:', payload);
+        
+        // Emit to server
+        this.socketHandler.socket.emit('moderatorMuteParticipant', payload);
+
+        // Show confirmation
+        this.showNotification(
+            `${action === 'mute' ? 'Muted' : 'Unmuted'} participant`, 
+            'info'
+        );
+    }
+
+    toggleParticipantVideo(participantId, currentVideoState) {
+        console.log(`📹 Moderator toggling video for participant ${participantId}, current state: ${currentVideoState}`);
+        
+        if (!this.isTeacher) {
+            this.showNotification('You do not have permission to control other participants', 'error');
+            return;
+        }
+
+        const action = currentVideoState ? 'disable' : 'enable';
+        console.log(`Sending video ${action} command for participant ${participantId}`);
+        
+        // Emit to server
+        this.socketHandler.socket.emit('moderatorToggleParticipantVideo', {
+            targetParticipantId: participantId,
+            disableVideo: currentVideoState,
+            moderatorId: this.currentUser.id,
+            moderatorName: this.currentUser.name
+        });
+
+        // Show confirmation
+        this.showNotification(
+            `${currentVideoState ? 'Disabled' : 'Enabled'} participant video`, 
+            'info'
+        );
+    }
+
+    removeParticipant(participantId, participantName) {
+        console.log(`👤❌ Moderator removing participant ${participantId} (${participantName})`);
+        
+        if (!this.isTeacher) {
+            this.showNotification('You do not have permission to remove participants', 'error');
+            return;
+        }
+
+        // Show confirmation dialog
+        if (confirm(`Are you sure you want to remove "${participantName}" from the meeting?`)) {
+            console.log(`Confirmed removal of participant ${participantId}`);
+            
+            // Emit to server
+            this.socketHandler.socket.emit('moderatorRemoveParticipant', {
+                targetParticipantId: participantId,
+                targetParticipantName: participantName,
+                moderatorId: this.currentUser.id,
+                moderatorName: this.currentUser.name
+            });
+
+            // Show confirmation
+            this.showNotification(
+                `Removed "${participantName}" from the meeting`, 
+                'warning'
+            );
+        } else {
+            console.log('Participant removal cancelled by moderator');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
 
     showSettings() {
         const modal = document.getElementById('settingsModal');
@@ -2273,7 +2403,8 @@ class EduMeet {
                     Waiting for host to admit you...
                 </div>
                 <div class="waiting-actions">
-                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">
+                    <button type="button" class="leave-waiting-btn" onclick="window.location.href='/'">
+                        <i class="fas fa-sign-out-alt"></i>
                         Leave Waiting Room
                     </button>
                 </div>

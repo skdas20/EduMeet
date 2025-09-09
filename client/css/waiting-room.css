@@ -142,8 +142,9 @@
 
 /* Leave Waiting Room Button */
 .leave-waiting-btn {
-    background: linear-gradient(135deg, var(--warning-red), var(--stellar-orange));
-    color: var(--text-primary);
+    /* Theme: neon cyan outline with dark-filled background for contrast */
+    background: linear-gradient(135deg, rgba(2,18,34,0.9), rgba(6,24,44,0.95));
+    color: var(--neon-cyan);
     border: none;
     padding: 12px 24px;
     border-radius: var(--radius-md);
@@ -151,21 +152,21 @@
     font-size: 14px;
     cursor: pointer;
     transition: all var(--transition-base);
-    margin-top: var(--spacing-md);
-    display: flex;
+    margin: var(--spacing-md) auto 0 auto;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-width: 140px;
+    min-width: 160px;
     justify-content: center;
     /* Parallelogram shape */
     clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-    box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+    box-shadow: 0 6px 20px rgba(0, 200, 255, 0.07), inset 0 1px 0 rgba(255,255,255,0.02);
 }
 
 .leave-waiting-btn:hover {
-    background: linear-gradient(135deg, var(--stellar-orange), var(--warning-red));
+    background: linear-gradient(135deg, rgba(6,28,50,0.98), rgba(10,36,66,0.98));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 71, 87, 0.5);
+    box-shadow: 0 8px 28px rgba(0, 200, 255, 0.12);
 }
 
 .leave-waiting-btn:active {

@@ -585,6 +585,192 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODERATOR CONTROLS - Server-side handlers for creator/teacher authority
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  socket.on('moderatorMuteParticipant', (data) => {
+    try {
+      const { targetParticipantId, mute, moderatorId, moderatorName } = data;
+      
+      logger.info(`Moderator ${moderatorName} (${moderatorId}) ${mute ? 'muting' : 'unmuting'} participant ${targetParticipantId}`);
+      
+      if (!socket.roomId) {
+        logger.warn('No room ID found for moderator mute request');
+        return;
+      }
+      
+      const room = rooms.get(socket.roomId);
+      if (!room) {
+        logger.warn(`Room ${socket.roomId} not found for moderator mute`);
+        return;
+      }
+      
+      // Verify moderator permissions
+      const moderator = room.participants.get(moderatorId);
+      if (!moderator || !moderator.isTeacher) {
+        logger.warn(`Unauthorized mute attempt by ${moderatorId}`);
+        socket.emit('error', { message: 'Unauthorized: Only teachers can mute participants' });
+        return;
+      }
+      
+      // Find target participant
+      const targetParticipant = room.participants.get(targetParticipantId);
+      if (!targetParticipant) {
+        logger.warn(`Target participant ${targetParticipantId} not found for mute`);
+        return;
+      }
+      
+      // Update participant state
+      targetParticipant.hasAudio = !mute;
+      
+      // Notify target participant to mute/unmute themselves
+      io.to(socket.roomId).emit('moderatorForceAudioToggle', {
+        targetParticipantId,
+        mute,
+        moderatorName
+      });
+      
+      // Broadcast updated participant state
+      io.to(socket.roomId).emit('participant-audio-toggle', {
+        participantId: targetParticipantId,
+        enabled: !mute
+      });
+      
+      logger.info(`Moderator mute ${mute ? 'applied' : 'removed'} for participant ${targetParticipantId}`);
+      
+    } catch (error) {
+      logger.error('Error in moderatorMuteParticipant:', error);
+    }
+  });
+
+  socket.on('moderatorToggleParticipantVideo', (data) => {
+    try {
+      const { targetParticipantId, disableVideo, moderatorId, moderatorName } = data;
+      
+      logger.info(`Moderator ${moderatorName} (${moderatorId}) ${disableVideo ? 'disabling' : 'enabling'} video for participant ${targetParticipantId}`);
+      
+      if (!socket.roomId) {
+        logger.warn('No room ID found for moderator video toggle');
+        return;
+      }
+      
+      const room = rooms.get(socket.roomId);
+      if (!room) {
+        logger.warn(`Room ${socket.roomId} not found for moderator video toggle`);
+        return;
+      }
+      
+      // Verify moderator permissions
+      const moderator = room.participants.get(moderatorId);
+      if (!moderator || !moderator.isTeacher) {
+        logger.warn(`Unauthorized video toggle attempt by ${moderatorId}`);
+        socket.emit('error', { message: 'Unauthorized: Only teachers can control participant video' });
+        return;
+      }
+      
+      // Find target participant
+      const targetParticipant = room.participants.get(targetParticipantId);
+      if (!targetParticipant) {
+        logger.warn(`Target participant ${targetParticipantId} not found for video toggle`);
+        return;
+      }
+      
+      // Update participant state
+      targetParticipant.hasVideo = !disableVideo;
+      
+      // Notify target participant to enable/disable video
+      io.to(socket.roomId).emit('moderatorForceVideoToggle', {
+        targetParticipantId,
+        disable: disableVideo,
+        moderatorName
+      });
+      
+      // Broadcast updated participant state
+      io.to(socket.roomId).emit('participant-video-toggle', {
+        participantId: targetParticipantId,
+        enabled: !disableVideo
+      });
+      
+      logger.info(`Moderator video ${disableVideo ? 'disabled' : 'enabled'} for participant ${targetParticipantId}`);
+      
+    } catch (error) {
+      logger.error('Error in moderatorToggleParticipantVideo:', error);
+    }
+  });
+
+  socket.on('moderatorRemoveParticipant', (data) => {
+    try {
+      const { targetParticipantId, targetParticipantName, moderatorId, moderatorName } = data;
+      
+      logger.info(`Moderator ${moderatorName} (${moderatorId}) removing participant ${targetParticipantName} (${targetParticipantId})`);
+      
+      if (!socket.roomId) {
+        logger.warn('No room ID found for participant removal');
+        return;
+      }
+      
+      const room = rooms.get(socket.roomId);
+      if (!room) {
+        logger.warn(`Room ${socket.roomId} not found for participant removal`);
+        return;
+      }
+      
+      // Verify moderator permissions
+      const moderator = room.participants.get(moderatorId);
+      if (!moderator || !moderator.isTeacher) {
+        logger.warn(`Unauthorized removal attempt by ${moderatorId}`);
+        socket.emit('error', { message: 'Unauthorized: Only teachers can remove participants' });
+        return;
+      }
+      
+      // Find target participant
+      const targetParticipant = room.participants.get(targetParticipantId);
+      if (!targetParticipant) {
+        logger.warn(`Target participant ${targetParticipantId} not found for removal`);
+        return;
+      }
+      
+      // Find target socket
+      const targetSocket = Array.from(io.sockets.sockets.values()).find(s => s.participantId === targetParticipantId);
+      
+      logger.info(`Looking for socket with participantId: ${targetParticipantId}`);
+      logger.info(`Found target socket: ${targetSocket ? targetSocket.id : 'NOT FOUND'}`);
+      logger.info(`All sockets: ${Array.from(io.sockets.sockets.values()).map(s => `${s.id}:${s.participantId}`).join(', ')}`);
+      
+      if (targetSocket) {
+        // Notify the participant they're being removed
+        targetSocket.emit('moderatorRemovedFromMeeting', {
+          moderatorName,
+          reason: 'Removed by meeting moderator'
+        });
+        
+        // Remove from room
+        roomController.leaveRoom(targetParticipantId, room);
+        
+        // Disconnect the participant's socket
+        setTimeout(() => {
+          targetSocket.disconnect(true);
+        }, 1000); // Give them time to see the notification
+      }
+      
+      // Broadcast to all other participants that someone was removed
+      socket.to(socket.roomId).emit('user-left', {
+        participantId: targetParticipantId,
+        userName: targetParticipantName,
+        removedByModerator: true,
+        moderatorName
+      });
+      
+      logger.info(`Participant ${targetParticipantName} removed from room ${socket.roomId} by moderator ${moderatorName}`);
+      
+    } catch (error) {
+      logger.error('Error in moderatorRemoveParticipant:', error);
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+
   socket.on('disconnect', () => {
     logger.info(`Client disconnected: ${socket.id}`);
     

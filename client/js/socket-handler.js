@@ -100,11 +100,6 @@ class SocketHandler {
             this.handleUserJoined(data);
         });
 
-        this.socket.on('user-left', (data) => {
-            console.log('User left:', data);
-            this.handleUserLeft(data);
-        });
-
         // Media state events - CRITICAL FIX
         this.socket.on('participant-video-toggle', (data) => {
             console.log('Media toggle: participant', data.participantId, 'video', data.enabled);
@@ -246,6 +241,91 @@ class SocketHandler {
                 console.error('Error showing reaction:', e);
             }
         });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MODERATOR CONTROL EVENTS - Handle forced actions by moderators
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        this.socket.on('moderatorForceAudioToggle', (data) => {
+            console.log('🔇 RECEIVED: Moderator forced audio toggle:', data);
+            
+            if (data.targetParticipantId === this.app.currentUser?.id) {
+                // This is for us - we're being muted/unmuted by moderator
+                const action = data.mute ? 'muted' : 'unmuted';
+                this.app.showNotification(
+                    `You have been ${action} by ${data.moderatorName}`, 
+                    data.mute ? 'warning' : 'info'
+                );
+                
+                // Actually toggle our audio based on moderator command
+                if (data.mute && this.app.isAudioEnabled) {
+                    // Moderator wants us muted and we have audio - turn it off
+                    this.app.toggleAudio(); 
+                } else if (!data.mute && !this.app.isAudioEnabled) {
+                    // Moderator wants us unmuted and we don't have audio - turn it on
+                    this.app.toggleAudio();
+                }
+                // If already in desired state, do nothing
+            }
+        });
+
+        this.socket.on('moderatorForceVideoToggle', (data) => {
+            console.log('📹 RECEIVED: Moderator forced video toggle:', data);
+            
+            if (data.targetParticipantId === this.app.currentUser?.id) {
+                // This is for us - our video is being disabled/enabled by moderator
+                const action = data.disable ? 'disabled' : 'enabled';
+                this.app.showNotification(
+                    `Your video has been ${action} by ${data.moderatorName}`, 
+                    data.disable ? 'warning' : 'info'
+                );
+                
+                // Actually toggle our video based on moderator command
+                if (data.disable && this.app.isVideoEnabled) {
+                    // Moderator wants video disabled and we have video - turn it off
+                    this.app.toggleVideo(); 
+                } else if (!data.disable && !this.app.isVideoEnabled) {
+                    // Moderator wants video enabled and we don't have video - turn it on
+                    this.app.toggleVideo();
+                }
+                // If already in desired state, do nothing
+            }
+        });
+
+        this.socket.on('moderatorRemovedFromMeeting', (data) => {
+            console.log('👤❌ RECEIVED: Removed from meeting by moderator:', data);
+            
+            // Show notification to the removed participant
+            this.app.showNotification(
+                `You have been removed from the meeting by ${data.moderatorName}`, 
+                'error'
+            );
+            
+            // Redirect to home page or show removal message after a delay
+            setTimeout(() => {
+                if (confirm('You have been removed from the meeting. Click OK to return to the home page.')) {
+                    window.location.href = '/';
+                } else {
+                    window.location.href = '/';
+                }
+            }, 2000);
+        });
+
+        // Enhanced user-left handler to show moderator removals
+        this.socket.on('user-left', (data) => {
+            console.log('User left:', data);
+            this.handleUserLeft(data);
+            
+            // Show special message if removed by moderator
+            if (data.removedByModerator) {
+                this.app.showNotification(
+                    `${data.userName} was removed from the meeting by ${data.moderatorName}`, 
+                    'warning'
+                );
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
         
         console.log('🔧 All socket events bound successfully');
     }
@@ -436,8 +516,8 @@ class SocketHandler {
                     id: data.participantId,
                     name: data.userName,
                     isTeacher: data.isTeacher,
-                    hasVideo: false,
-                    hasAudio: false
+                    hasVideo: data.hasVideo || false,
+                    hasAudio: data.hasAudio || false
                 });
                 
                 console.log('Updated participants:', this.app.participants.map(p => p.name));
