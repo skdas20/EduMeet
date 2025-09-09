@@ -13,6 +13,7 @@ const mediasoupConfig = require('./config/mediasoup');
 const roomController = require('./controllers/roomController');
 const canvasController = require('./controllers/canvasController');
 const mediaController = require('./controllers/mediaController');
+const WaitingParticipant = require('./models/WaitingParticipant');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -115,41 +116,109 @@ io.on('connection', (socket) => {
         logger.info(`Created new room: ${roomId}`);
       }
       
-      // Join room
-      const participant = await roomController.joinRoom(socket, room, userName, isTeacher);
+      // If this is the first person (teacher), they become the creator and join directly
+      const isRoomEmpty = room.getParticipantCount() === 0;
+      const shouldJoinDirectly = isTeacher || isRoomEmpty || !room.settings.waitingRoomEnabled;
       
-      socket.join(roomId);
-      socket.roomId = roomId;
-      socket.participantId = participant.id;
-      socket.userName = userName;
-      
-      // Get existing participants (excluding the one who just joined)
-      const existingParticipants = Array.from(room.participants.values())
-        .filter(p => p.id !== participant.id)
-        .map(p => ({
-          id: p.id,
-          name: p.name,
-          isTeacher: p.isTeacher,
-          hasVideo: p.hasVideo || false,
-          hasAudio: p.hasAudio || false
-        }));
+      if (shouldJoinDirectly) {
+        // Join room directly
+        const participant = await roomController.joinRoom(socket, room, userName, isTeacher);
+        
+        // Set as creator if they're the first person
+        if (isRoomEmpty) {
+          room.setCreator(participant.id);
+        }
+        
+        socket.join(roomId);
+        socket.roomId = roomId;
+        socket.participantId = participant.id;
+        socket.userName = userName;
+        socket.isInWaitingRoom = false;
+        
+        // Get existing participants (excluding the one who just joined)
+        const existingParticipants = Array.from(room.participants.values())
+          .filter(p => p.id !== participant.id)
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            isTeacher: p.isTeacher,
+            hasVideo: p.hasVideo || false,
+            hasAudio: p.hasAudio || false
+          }));
 
-      logger.info(`Participant ${userName} joined room ${roomId}`);
-      logger.info(`Existing participants in room: ${existingParticipants.length}`);
-      
-      // Send room info to new participant first
-      socket.emit('room-joined', {
-        yourId: participant.id,
-        roomId: roomId,
-        participants: existingParticipants
-      });
-      
-      // Then notify others about new participant
-      socket.to(roomId).emit('user-joined', {
-        participantId: participant.id,
-        userName: participant.name,
-        isTeacher: participant.isTeacher
-      });
+        logger.info(`Participant ${userName} joined room ${roomId} directly`);
+        
+        // Send room info to new participant first
+        socket.emit('room-joined', {
+          yourId: participant.id,
+          roomId: roomId,
+          participants: existingParticipants,
+          waitingParticipants: room.getWaitingParticipants().map(wp => ({
+            id: wp.id,
+            name: wp.name,
+            joinedAt: wp.joinedAt
+          })),
+          isCreator: room.isCreator(participant.id),
+          canAdmit: room.canAdmitParticipants(participant.id)
+        });
+        
+        // Then notify others about new participant
+        socket.to(roomId).emit('user-joined', {
+          participantId: participant.id,
+          userName: participant.name,
+          isTeacher: participant.isTeacher
+        });
+        
+        // Notify teachers about waiting participants if any
+        if (room.waitingParticipants.size > 0) {
+          socket.emit('waiting-participants-update', {
+            waitingParticipants: room.getWaitingParticipants().map(wp => ({
+              id: wp.id,
+              name: wp.name,
+              joinedAt: wp.joinedAt
+            }))
+          });
+        }
+      } else {
+        // Add to waiting room
+        const waitingParticipant = new WaitingParticipant(
+          uuidv4(),
+          socket.id,
+          userName,
+          isTeacher
+        );
+        
+        room.addWaitingParticipant(waitingParticipant);
+        
+        socket.join(`${roomId}-waiting`);
+        socket.roomId = roomId;
+        socket.waitingParticipantId = waitingParticipant.id;
+        socket.userName = userName;
+        socket.isInWaitingRoom = true;
+        
+        logger.info(`Participant ${userName} added to waiting room for ${roomId}`);
+        
+        // Notify participant they're in waiting room
+        socket.emit('waiting-room-joined', {
+          waitingId: waitingParticipant.id,
+          roomId: roomId,
+          message: 'Waiting for host to admit you...'
+        });
+        
+        // Notify teachers about new waiting participant
+        io.to(roomId).emit('waiting-participant-added', {
+          waitingParticipant: {
+            id: waitingParticipant.id,
+            name: waitingParticipant.name,
+            joinedAt: waitingParticipant.joinedAt
+          }
+        });
+
+        // Send full waiting list update to admins
+        io.to(roomId).emit('waiting-participants-update', {
+          waitingParticipants: room.getWaitingParticipants().map(wp => ({ id: wp.id, name: wp.name, joinedAt: wp.joinedAt }))
+        });
+      }
       
     } catch (error) {
       logger.error('Error joining room:', error);
@@ -236,6 +305,174 @@ io.on('connection', (socket) => {
       participantId: socket.id,
       enabled: audioEnabled
     });
+  });
+
+  // Reactions
+  socket.on('reaction', (data) => {
+    try {
+      const { emoji } = data;
+      if (!socket.roomId) return;
+      // broadcast to everyone in the room
+      io.to(socket.roomId).emit('reaction', {
+        from: socket.participantId || socket.id,
+        participantId: socket.participantId || socket.id,
+        emoji
+      });
+    } catch (error) {
+      logger.error('Error handling reaction:', error);
+    }
+  });
+
+  // Waiting room management events
+  socket.on('admit-participant', (data) => {
+    try {
+      const { waitingParticipantId } = data;
+      const room = rooms.get(socket.roomId);
+      
+      if (!room || !room.canAdmitParticipants(socket.participantId)) {
+        socket.emit('error', { message: 'Not authorized to admit participants' });
+        return;
+      }
+      
+      const waitingParticipant = room.getWaitingParticipant(waitingParticipantId);
+      if (!waitingParticipant) {
+        socket.emit('error', { message: 'Waiting participant not found' });
+        return;
+      }
+      
+      // Find the waiting participant's socket
+      const waitingSocket = io.sockets.sockets.get(waitingParticipant.socketId);
+      if (!waitingSocket) {
+        // Clean up if socket is disconnected
+        room.removeWaitingParticipant(waitingParticipantId);
+        io.to(socket.roomId).emit('waiting-participant-removed', { waitingParticipantId });
+        return;
+      }
+      
+      // Move participant from waiting room to main room
+      room.removeWaitingParticipant(waitingParticipantId);
+      
+      // Create actual participant
+      roomController.joinRoom(waitingSocket, room, waitingParticipant.name, waitingParticipant.isTeacher)
+        .then(participant => {
+          // Update socket properties
+          waitingSocket.leave(`${socket.roomId}-waiting`);
+          waitingSocket.join(socket.roomId);
+          waitingSocket.participantId = participant.id;
+          waitingSocket.isInWaitingRoom = false;
+          delete waitingSocket.waitingParticipantId;
+          
+          // Get existing participants for the newly admitted participant
+          const existingParticipants = Array.from(room.participants.values())
+            .filter(p => p.id !== participant.id)
+            .map(p => ({
+              id: p.id,
+              name: p.name,
+              isTeacher: p.isTeacher,
+              hasVideo: p.hasVideo || false,
+              hasAudio: p.hasAudio || false
+            }));
+          
+          // Notify the admitted participant
+          waitingSocket.emit('admitted-to-room', {
+            yourId: participant.id,
+            roomId: socket.roomId,
+            participants: existingParticipants
+          });
+          
+          // Notify all participants about new member
+          io.to(socket.roomId).emit('user-joined', {
+            participantId: participant.id,
+            userName: participant.name,
+            isTeacher: participant.isTeacher
+          });
+          
+          // Notify all admins about waiting room update (include self)
+          io.to(socket.roomId).emit('waiting-participant-removed', {
+            waitingParticipantId
+          });
+          io.to(socket.roomId).emit('waiting-participants-update', {
+            waitingParticipants: room.getWaitingParticipants().map(wp => ({ id: wp.id, name: wp.name, joinedAt: wp.joinedAt }))
+          });
+          
+          logger.info(`Participant ${waitingParticipant.name} admitted to room ${socket.roomId}`);
+        })
+        .catch(error => {
+          logger.error('Error admitting participant:', error);
+          socket.emit('error', { message: 'Failed to admit participant' });
+        });
+        
+    } catch (error) {
+      logger.error('Error in admit-participant:', error);
+      socket.emit('error', { message: 'Failed to admit participant' });
+    }
+  });
+
+  socket.on('deny-participant', (data) => {
+    try {
+      const { waitingParticipantId } = data;
+      const room = rooms.get(socket.roomId);
+      
+      if (!room || !room.canAdmitParticipants(socket.participantId)) {
+        socket.emit('error', { message: 'Not authorized to deny participants' });
+        return;
+      }
+      
+      const waitingParticipant = room.getWaitingParticipant(waitingParticipantId);
+      if (!waitingParticipant) {
+        socket.emit('error', { message: 'Waiting participant not found' });
+        return;
+      }
+      
+      // Find the waiting participant's socket and notify them
+      const waitingSocket = io.sockets.sockets.get(waitingParticipant.socketId);
+      if (waitingSocket) {
+        waitingSocket.emit('access-denied', {
+          message: 'Access to the meeting was denied by the host'
+        });
+        waitingSocket.disconnect();
+      }
+      
+      // Remove from waiting room
+      room.removeWaitingParticipant(waitingParticipantId);
+      
+      // Notify all admins about waiting room update
+      io.to(socket.roomId).emit('waiting-participant-removed', {
+        waitingParticipantId
+      });
+      io.to(socket.roomId).emit('waiting-participants-update', {
+        waitingParticipants: room.getWaitingParticipants().map(wp => ({ id: wp.id, name: wp.name, joinedAt: wp.joinedAt }))
+      });
+      
+      logger.info(`Participant ${waitingParticipant.name} denied access to room ${socket.roomId}`);
+      
+    } catch (error) {
+      logger.error('Error in deny-participant:', error);
+      socket.emit('error', { message: 'Failed to deny participant' });
+    }
+  });
+
+  socket.on('toggle-waiting-room', (data) => {
+    try {
+      const { enabled } = data;
+      const room = rooms.get(socket.roomId);
+      
+      if (!room || !room.canAdmitParticipants(socket.participantId)) {
+        socket.emit('error', { message: 'Not authorized to toggle waiting room' });
+        return;
+      }
+      
+      room.settings.waitingRoomEnabled = enabled;
+      
+      // Notify all participants about setting change
+      io.to(socket.roomId).emit('waiting-room-toggled', { enabled });
+      
+      logger.info(`Waiting room ${enabled ? 'enabled' : 'disabled'} for room ${socket.roomId}`);
+      
+    } catch (error) {
+      logger.error('Error toggling waiting room:', error);
+      socket.emit('error', { message: 'Failed to toggle waiting room' });
+    }
   });
 
   // MediaSoup signaling (kept for future use)
@@ -351,17 +588,29 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     logger.info(`Client disconnected: ${socket.id}`);
     
-    if (socket.roomId && socket.participantId) {
+    if (socket.roomId) {
       const room = rooms.get(socket.roomId);
       if (room) {
-        roomController.leaveRoom(socket.participantId, room);
-        socket.to(socket.roomId).emit('user-left', {
-          participantId: socket.participantId,
-          userName: socket.userName
-        });
+        // Handle participant leaving
+        if (socket.participantId && !socket.isInWaitingRoom) {
+          roomController.leaveRoom(socket.participantId, room);
+          socket.to(socket.roomId).emit('user-left', {
+            participantId: socket.participantId,
+            userName: socket.userName
+          });
+        }
         
-        // Clean up empty rooms
-        if (room.participants.size === 0) {
+        // Handle waiting participant leaving
+        if (socket.waitingParticipantId && socket.isInWaitingRoom) {
+          room.removeWaitingParticipant(socket.waitingParticipantId);
+          socket.to(socket.roomId).emit('waiting-participant-removed', {
+            waitingParticipantId: socket.waitingParticipantId
+          });
+          logger.info(`Waiting participant ${socket.userName} left room ${socket.roomId}`);
+        }
+        
+        // Clean up empty rooms (only if no participants and no waiting participants)
+        if (room.participants.size === 0 && room.waitingParticipants.size === 0) {
           rooms.delete(socket.roomId);
           logger.info(`Room ${socket.roomId} deleted (empty)`);
         }

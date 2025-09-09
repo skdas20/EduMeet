@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button Click Test</title>
+    <style>
+        .test-btn {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Button Click Test</h1>
+    
+    <button id="testBtn1" class="test-btn">Test Button 1</button>
+    <button id="testBtn2" class="test-btn">Test Button 2</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        document.getElementById('testBtn1').addEventListener('click', () => {
+            output.innerHTML += '<p>Button 1 clicked via addEventListener</p>';
+        });
+        
+        document.getElementById('testBtn2').onclick = () => {
+            output.innerHTML += '<p>Button 2 clicked via onclick</p>';
+        };
+        
+        // Global click listener
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                output.innerHTML += `<p>Global listener: ${e.target.id} clicked</p>`;
+            }
+        });
+        
+        console.log('Test page loaded');
+    </script>
+</body>
+</html>

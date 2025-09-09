@@ -1,0 +1,177 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAITING ROOM STYLES - Cosmic Space Theme
+   Matching the main style.css cosmic color scheme and design patterns
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.waiting-section {
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 15px;
+}
+
+.waiting-section h4 {
+    color: var(--neon-cyan);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.participants-section h4 {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.waiting-participant {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: var(--surface-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    border: 1px solid var(--warning-red);
+    animation: pulse-waiting 2s ease-in-out infinite;
+}
+
+@keyframes pulse-waiting {
+    0%, 100% { border-color: var(--warning-red); box-shadow: 0 0 5px rgba(255, 71, 87, 0.3); }
+    50% { border-color: var(--stellar-orange); box-shadow: 0 0 15px rgba(255, 140, 0, 0.5); }
+}
+
+.participant-info {
+    flex: 1;
+}
+
+.participant-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.participant-time {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.participant-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn {
+    padding: 6px 12px;
+    border: none;
+    /* Parallelogram shape for consistency */
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    min-width: 60px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid transparent;
+}
+
+.btn-success {
+    background: var(--success-green);
+    color: var(--cosmic-dark);
+}
+
+.btn-success:hover {
+    background: #00cc77;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 255, 136, 0.4);
+}
+
+.btn-danger {
+    background: var(--warning-red);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #ff3742;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+/* Participants badge animation */
+.btn-header.has-waiting {
+    animation: wiggle 0.3s ease-in-out 3;
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
+}
+
+.participants-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--warning-red);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: badge-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* Leave Waiting Room Button */
+.leave-waiting-btn {
+    background: linear-gradient(135deg, var(--warning-red), var(--stellar-orange));
+    color: var(--text-primary);
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    margin-top: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    justify-content: center;
+    /* Parallelogram shape */
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+}
+
+.leave-waiting-btn:hover {
+    background: linear-gradient(135deg, var(--stellar-orange), var(--warning-red));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 71, 87, 0.5);
+}
+
+.leave-waiting-btn:active {
+    transform: translateY(0);
+}
+
+.leave-waiting-btn i {
+    font-size: 16px;
+}

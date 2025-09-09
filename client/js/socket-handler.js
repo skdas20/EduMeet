@@ -183,10 +183,68 @@ class SocketHandler {
             this.handleCanvasEvent('canvas-cursor', data);
         });
 
+        // Screen sharing events
+        this.socket.on('screen-share-started', (data) => {
+            console.log('Screen sharing started by participant:', data.participantId);
+            this.handleScreenShareStarted(data);
+        });
+
+        this.socket.on('screen-share-stopped', (data) => {
+            console.log('Screen sharing stopped by participant:', data.participantId);
+            this.handleScreenShareStopped(data);
+        });
+
         // Error handling
         this.socket.on('error', (error) => {
             console.error('Socket error:', error);
             this.app.showNotification(error.message || 'An error occurred', 'error');
+        });
+
+        // Waiting room events
+        this.socket.on('waiting-room-joined', (data) => {
+            console.log('Joined waiting room:', data);
+            this.handleWaitingRoomJoined(data);
+        });
+
+        this.socket.on('admitted-to-room', (data) => {
+            console.log('Admitted to room:', data);
+            this.handleAdmittedToRoom(data);
+        });
+
+        this.socket.on('access-denied', (data) => {
+            console.log('Access denied:', data);
+            this.handleAccessDenied(data);
+        });
+
+        this.socket.on('waiting-participant-added', (data) => {
+            console.log('New waiting participant:', data);
+            this.handleWaitingParticipantAdded(data);
+        });
+
+        this.socket.on('waiting-participant-removed', (data) => {
+            console.log('Waiting participant removed:', data);
+            this.handleWaitingParticipantRemoved(data);
+        });
+
+        this.socket.on('waiting-participants-update', (data) => {
+            console.log('Waiting participants update:', data);
+            this.handleWaitingParticipantsUpdate(data);
+        });
+
+        this.socket.on('waiting-room-toggled', (data) => {
+            console.log('Waiting room toggled:', data);
+            this.handleWaitingRoomToggled(data);
+        });
+
+        // Reactions
+        this.socket.on('reaction', (data) => {
+            try {
+                if (this.app && typeof this.app.showReactionOnTile === 'function') {
+                    this.app.showReactionOnTile(data.participantId || data.from || 'local', data.emoji);
+                }
+            } catch (e) {
+                console.error('Error showing reaction:', e);
+            }
         });
         
         console.log('🔧 All socket events bound successfully');
@@ -263,15 +321,36 @@ class SocketHandler {
                 reject(new Error('Join room timeout'));
             }, 10000);
 
-            this.socket.once('room-joined', (data) => {
+            // Resolve either when fully joined or when placed into waiting room
+            const onRoomJoined = (data) => {
                 clearTimeout(timeout);
-                resolve(data);
-            });
+                cleanup();
+                resolve({ ...data, waiting: false });
+            };
 
-            this.socket.once('error', (error) => {
+            const onWaitingJoined = (data) => {
                 clearTimeout(timeout);
+                cleanup();
+                resolve({ ...data, waiting: true });
+            };
+
+            const cleanup = () => {
+                this.socket.off('room-joined', onRoomJoined);
+                this.socket.off('waiting-room-joined', onWaitingJoined);
+                this.socket.off('error', onError);
+            };
+
+            this.socket.once('room-joined', onRoomJoined);
+            this.socket.once('waiting-room-joined', onWaitingJoined);
+
+
+            const onError = (error) => {
+                clearTimeout(timeout);
+                cleanup();
                 reject(error);
-            });
+            };
+
+            this.socket.once('error', onError);
         });
     }
 
@@ -284,8 +363,11 @@ class SocketHandler {
         // Store participant info
         this.app.currentUser.id = data.yourId;
         this.app.participants = data.participants || [];
+        this.app.canAdmitParticipants = data.canAdmit || false;
+        this.app.isCreator = data.isCreator || false;
         
         console.log('App participants set to:', this.app.participants);
+        console.log('Can admit participants:', this.app.canAdmitParticipants);
         
         // Add video tiles for existing participants
         data.participants.forEach(participant => {
@@ -299,6 +381,11 @@ class SocketHandler {
                 }
             }
         });
+        
+        // Initialize waiting room UI if user can admit participants
+        if (this.app.canAdmitParticipants && data.waitingParticipants) {
+            this.app.initializeWaitingRoomUI(data.waitingParticipants);
+        }
         
         // Initialize WebRTC connections AFTER a delay to ensure both sides are ready
         if (this.app.webrtcManager) {
@@ -486,6 +573,138 @@ class SocketHandler {
         });
     }
 
+    // Screen sharing event handlers
+    handleScreenShareStarted(data) {
+        console.log('Handling screen share started:', data);
+        const participantId = data.participantId;
+        const userId = data.userId || participantId;
+        
+        if (participantId === this.socket.id || participantId === 'local') {
+            return; // Don't handle our own screen share event
+        }
+        
+        // Find the participant's video tile and mark it as screen sharing
+        // Try both the participantId and userId to find the correct tile
+        let videoTile = document.getElementById(`video-${participantId}`);
+        if (!videoTile && userId !== participantId) {
+            videoTile = document.getElementById(`video-${userId}`);
+        }
+        
+        if (videoTile) {
+            videoTile.classList.add('remote-screen-sharing');
+            const video = videoTile.querySelector('video');
+            if (video) {
+                video.setAttribute('data-screen-share', 'true');
+            }
+            console.log(`Marked participant ${participantId} as screen sharing`);
+        } else {
+            console.warn(`Could not find video tile for screen sharing participant: ${participantId} or ${userId}`);
+        }
+        
+        // Show notification
+        if (this.app.showNotification) {
+            const participant = this.app.participants?.find(p => p.id === participantId || p.id === userId);
+            const name = participant ? participant.name : 'Someone';
+            this.app.showNotification(`${name} started screen sharing`, 'info');
+        }
+    }
+
+    handleScreenShareStopped(data) {
+        console.log('Handling screen share stopped:', data);
+        const participantId = data.participantId;
+        const userId = data.userId || participantId;
+        
+        if (participantId === this.socket.id || participantId === 'local') {
+            return; // Don't handle our own screen share event
+        }
+        
+        // Find the participant's video tile and remove screen sharing marker
+        // Try both the participantId and userId to find the correct tile
+        let videoTile = document.getElementById(`video-${participantId}`);
+        if (!videoTile && userId !== participantId) {
+            videoTile = document.getElementById(`video-${userId}`);
+        }
+        
+        if (videoTile) {
+            videoTile.classList.remove('remote-screen-sharing');
+            const video = videoTile.querySelector('video');
+            if (video) {
+                video.removeAttribute('data-screen-share');
+            }
+            console.log(`Removed screen sharing marker from participant ${participantId}`);
+        } else {
+            console.warn(`Could not find video tile for screen sharing participant: ${participantId} or ${userId}`);
+        }
+        
+        // Show notification
+        if (this.app.showNotification) {
+            const participant = this.app.participants?.find(p => p.id === participantId || p.id === userId);
+            const name = participant ? participant.name : 'Someone';
+            this.app.showNotification(`${name} stopped screen sharing`, 'info');
+        }
+    }
+
+    // Waiting room event handlers
+    handleWaitingRoomJoined(data) {
+        console.log('Handling waiting room joined:', data);
+        this.app.showWaitingRoom(data);
+    }
+
+    handleAdmittedToRoom(data) {
+        console.log('Handling admitted to room:', data);
+        this.app.hideWaitingRoom();
+        // Show meeting UI for the admitted participant
+        if (this.app && typeof this.app.showMeetingRoom === 'function') {
+            this.app.showMeetingRoom();
+        }
+        if (this.app && typeof this.app.startTimer === 'function') {
+            this.app.startTimer();
+        }
+        this.handleRoomJoined(data);
+    }
+
+    handleAccessDenied(data) {
+        console.log('Handling access denied:', data);
+        this.app.showAccessDenied(data.message);
+    }
+
+    handleWaitingParticipantAdded(data) {
+        console.log('Handling waiting participant added:', data);
+        if (this.app.canAdmitParticipants) {
+            this.app.addWaitingParticipantToUI(data.waitingParticipant);
+            // Show notification + update participants badge
+            if (typeof this.app.showJoinRequestNotification === 'function') {
+                this.app.showJoinRequestNotification(data.waitingParticipant);
+            }
+        }
+    }
+
+    handleWaitingParticipantRemoved(data) {
+        console.log('Handling waiting participant removed:', data);
+        if (this.app.canAdmitParticipants) {
+            this.app.removeWaitingParticipantFromUI(data.waitingParticipantId);
+        }
+        // Update participants badge if present
+        if (typeof this.app.updateParticipantsBadge === 'function') {
+            this.app.updateParticipantsBadge();
+        }
+    }
+
+    handleWaitingParticipantsUpdate(data) {
+        console.log('Handling waiting participants update:', data);
+        if (this.app.canAdmitParticipants) {
+            this.app.updateWaitingParticipantsList(data.waitingParticipants);
+            if (typeof this.app.updateParticipantsBadge === 'function') {
+                this.app.updateParticipantsBadge();
+            }
+        }
+    }
+
+    handleWaitingRoomToggled(data) {
+        console.log('Handling waiting room toggled:', data);
+        this.app.updateWaitingRoomSetting(data.enabled);
+    }
+
     // Emit methods for UI actions
     emitToggleVideo(enabled) {
         this.socket.emit('toggle-video', { enabled });
@@ -505,6 +724,19 @@ class SocketHandler {
 
     emitChatMessage(message) {
         this.socket.emit('chat-message', { message });
+    }
+
+    // Waiting room emit methods
+    emitAdmitParticipant(waitingParticipantId) {
+        this.socket.emit('admit-participant', { waitingParticipantId });
+    }
+
+    emitDenyParticipant(waitingParticipantId) {
+        this.socket.emit('deny-participant', { waitingParticipantId });
+    }
+
+    emitToggleWaitingRoom(enabled) {
+        this.socket.emit('toggle-waiting-room', { enabled });
     }
 
     // Cleanup

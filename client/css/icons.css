@@ -1,21 +1,228 @@
-/* Custom Icon Font Fallback */
+/*
+================================================
+  Google Meet Clone - "Cosmic Call" Theme 🚀
+================================================
+*/
+
+/* --- 1. Imports & Global Setup --- */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+
+:root {
+    /* Use the same cosmic theme as main style.css */
+    --cosmic-dark: #0a0e27;
+    --cosmic-deep: #141933;
+    --cosmic-medium: #1e2749;
+    --cosmic-light: #2a3660;
+    --neon-cyan: #00d4ff;
+    --neon-cyan-dark: #00a8cc;
+    --neon-purple: #9945ff;
+    --stellar-gold: #ffd700;
+    --warning-red: #ff4757;
+    --text-primary: #ffffff;
+    --text-accent: #00d4ff;
+    --border-default: rgba(0, 212, 255, 0.25);
+    --glow-medium: 0 0 20px rgba(0, 212, 255, 0.5);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --font-accent: 'Orbitron', 'Inter', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--space-black);
+    color: var(--star-white);
+    overflow: hidden; /* Prevents scrollbars from the stars */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* --- 2. Animated Starfield Background --- */
+.stars {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background-image:
+        radial-gradient(1px 1px at 20px 30px, #eee, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 50px 160px, #ddd, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 90px 40px, #fff, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 150px 120px, #ddd, rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    animation: zoom 15s infinite;
+    opacity: 0;
+}
+
+.stars:nth-child(2) {
+    background-size: 300px 300px;
+    animation: zoom 30s infinite;
+    animation-delay: -2s;
+}
+
+.stars:nth-child(3) {
+    background-size: 400px 400px;
+    animation: zoom 45s infinite;
+    animation-delay: -5s;
+}
+
+@keyframes zoom {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) translateY(0);
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.2) translateY(-100px);
+    }
+}
+
+/* Nebula overlay for depth */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, rgba(138,43,226,0.2), transparent 70%); /* Purple nebula glow */
+    pointer-events: none;
+    animation: nebula-pulse 20s ease-in-out infinite;
+    z-index: -1;
+}
+
+@keyframes nebula-pulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+/* --- 3. Main Layout --- */
+.main-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    padding: 20px;
+}
+
+#video-grid {
+    flex-grow: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    padding-bottom: 100px; /* Space for the control bar */
+}
+
+.video-participant {
+    background: #000;
+    border-radius: 15px;
+    border: 2px solid var(--deep-space-blue);
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.video-participant:hover, .video-participant.active-speaker {
+    border-color: var(--electric-blue);
+    box-shadow: 0 0 20px var(--ui-glow);
+    transform: scale(1.02);
+}
+
+.participant-name {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--electric-blue);
+}
+
+/* --- 4. Controls Bar --- */
+#controls-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(13, 13, 30, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--deep-space-blue);
+    border-radius: 50px;
+    padding: 10px;
+    display: flex;
+    gap: 12px;
+    box-shadow: 0 0 25px var(--ui-glow);
+}
+
+.control-button {
+    background-color: var(--deep-space-blue);
+    color: var(--star-white);
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.control-button:hover {
+    background-color: var(--nebula-purple);
+    transform: translateY(-3px);
+    box-shadow: 0 0 15px var(--ui-glow);
+}
+
+.control-button.active {
+    background-color: var(--electric-blue);
+    color: var(--space-black);
+    box-shadow: 0 0 15px var(--ui-glow);
+}
+
+#hang-up-btn {
+    background-color: var(--danger-red);
+}
+
+#hang-up-btn:hover {
+    background-color: var(--danger-red); /* Keep color on hover */
+    box-shadow: 0 0 20px var(--danger-glow);
+}
+
+/* --- 5. Icon Fallback System (Original + Minor Tweaks) --- */
+/* Your original, robust icon fallback system fits perfectly here. */
 @font-face {
     font-family: 'IconFont';
-    src: url('data:font/woff2;base64,') format('woff2');
+    src: url('data:font/woff2;base64,') format('woff2'); /* Empty but valid */
     font-weight: normal;
     font-style: normal;
 }
-
-/* Font Awesome Icon Fallbacks using Unicode */
 .fas, .fa {
     font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "IconFont", Arial, sans-serif !important;
     font-weight: 900 !important;
     font-style: normal !important;
     display: inline-block !important;
     text-rendering: auto !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     line-height: 1 !important;
 }
-
 /* Specific icon mappings using Unicode characters */
 .fa-microphone::before { content: "\f130"; }
 .fa-microphone-slash::before { content: "\f131"; }
@@ -24,27 +231,10 @@
 .fa-desktop::before { content: "\f108"; }
 .fa-phone-slash::before { content: "\f3dd"; }
 .fa-hand-paper::before { content: "\f256"; }
-.fa-paint-brush::before { content: "\f1fc"; }
 .fa-comments::before { content: "\f086"; }
 .fa-users::before { content: "\f0c0"; }
 .fa-cog::before { content: "\f013"; }
-.fa-times::before { content: "\f00d"; }
-.fa-plus-circle::before { content: "\f055"; }
-.fa-sign-in-alt::before { content: "\f2f6"; }
-.fa-chalkboard-teacher::before { content: "\f51c"; }
-.fa-dice::before { content: "\f522"; }
 .fa-rocket::before { content: "\f135"; }
-.fa-record-vinyl::before { content: "\f8d9"; }
-.fa-paper-plane::before { content: "\f1d8"; }
-.fa-pen::before { content: "\f304"; }
-.fa-eraser::before { content: "\f12d"; }
-.fa-font::before { content: "\f031"; }
-.fa-minus::before { content: "\f068"; }
-.fa-square::before { content: "\f0c8"; }
-.fa-circle::before { content: "\f111"; }
-.fa-trash::before { content: "\f1f8"; }
-.fa-undo::before { content: "\f0e2"; }
-.fa-thumbtack::before { content: "\f08d"; }
 
 /* Fallback for when Font Awesome completely fails */
 .icon-fallback {
@@ -61,11 +251,196 @@
 .no-fa .fa-desktop::before { content: "🖥"; font-family: Arial, sans-serif; }
 .no-fa .fa-phone-slash::before { content: "📞"; font-family: Arial, sans-serif; }
 .no-fa .fa-hand-paper::before { content: "✋"; font-family: Arial, sans-serif; }
-.no-fa .fa-paint-brush::before { content: "🎨"; font-family: Arial, sans-serif; }
 .no-fa .fa-comments::before { content: "💬"; font-family: Arial, sans-serif; }
 .no-fa .fa-users::before { content: "👥"; font-family: Arial, sans-serif; }
 .no-fa .fa-cog::before { content: "⚙"; font-family: Arial, sans-serif; }
-.no-fa .fa-times::before { content: "✕"; font-family: Arial, sans-serif; }
-.no-fa .fa-plus-circle::before { content: "➕"; font-family: Arial, sans-serif; }
-.no-fa .fa-sign-in-alt::before { content: "→"; font-family: Arial, sans-serif; }
 .no-fa .fa-rocket::before { content: "🚀"; font-family: Arial, sans-serif; }
+
+/* --- 6. Enhanced Video Participant Effects --- */
+.video-participant video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter 0.3s ease;
+}
+
+.video-participant:hover video {
+    filter: brightness(1.1);
+}
+
+.video-participant::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Active speaker animation */
+.video-participant.active-speaker {
+    animation: speaker-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes speaker-glow {
+    0%, 100% { box-shadow: 0 0 20px var(--ui-glow); }
+    50% { box-shadow: 0 0 30px var(--ui-glow); }
+}
+
+/* --- 7. Sidebar & Panels (Chat, Participants) --- */
+/* REMOVED: Conflicting sidebar and chat styles - using style.css instead */
+
+/* --- 9. Participants List --- */
+.participant-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--deep-space-blue);
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.participant-item:hover {
+    background: var(--nebula-purple);
+    transform: translateX(5px);
+}
+
+.participant-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, var(--electric-blue), var(--nebula-purple));
+    display: grid;
+    place-items: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.participant-name {
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+/* --- 10. Responsive Design --- */
+@media (max-width: 768px) {
+    #video-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    #controls-bar {
+        width: calc(100% - 40px);
+        justify-content: center;
+    }
+
+    .sidebar {
+        width: 100%;
+        right: -100%;
+    }
+}
+
+/* --- 11. Additional Animations & Effects --- */
+/* Rocket launch on page load */
+@keyframes rocket-launch {
+    0% { transform: translateY(100vh) rotate(-45deg); opacity: 0; }
+    100% { transform: translateY(-100vh) rotate(-45deg); opacity: 1; }
+}
+
+.rocket {
+    position: fixed;
+    bottom: -50px;
+    right: 50px;
+    font-size: 3rem;
+    animation: rocket-launch 5s ease-out forwards;
+    z-index: -1;
+    opacity: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORBITAL CURSOR THEME - Modern Space Interface
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Default cursor: Ringed planet with subtle glow */
+body {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><filter id="glow"><feGaussianBlur stdDeviation="1" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><circle cx="12" cy="12" r="6" fill="none" stroke="rgba(153,69,255,0.9)" stroke-width="2" filter="url(%23glow)"/><ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="rgba(0,212,255,0.7)" stroke-width="1.5"/><circle cx="12" cy="12" r="2" fill="rgba(255,215,0,0.8)"/></svg>'), auto;
+}
+
+/* Pointer cursor: 4-point star for clickables */
+button, .btn, .control-btn, .btn-header, a, .link, [role="button"], .clickable {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><filter id="starGlow"><feGaussianBlur stdDeviation="0.8" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M10,2 L11,8 L18,10 L11,12 L10,18 L9,12 L2,10 L9,8 Z" fill="rgba(0,212,255,0.9)" stroke="rgba(153,69,255,0.8)" stroke-width="1" filter="url(%23starGlow)"/></svg>'), pointer !important;
+}
+
+/* Text cursor: Golden I-beam for maximum visibility */
+input, textarea, select, [contenteditable], .text-input {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="28" viewBox="0 0 20 28"><defs><filter id="goldenGlow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><line x1="10" y1="4" x2="10" y2="24" stroke="rgba(255,215,0,1)" stroke-width="4" filter="url(%23goldenGlow)"/><line x1="10" y1="4" x2="10" y2="24" stroke="rgba(255,255,255,0.9)" stroke-width="2"/><rect x="3" y="2" width="14" height="3" fill="rgba(255,215,0,1)" rx="1.5"/><rect x="3" y="23" width="14" height="3" fill="rgba(255,215,0,1)" rx="1.5"/><circle cx="10" cy="14" r="2" fill="rgba(255,140,0,0.9)"/></svg>'), text !important;
+}
+
+/* Grab cursor: Tiny satellite */
+.draggable, [draggable="true"], .moveable {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><filter id="satGlow"><feGaussianBlur stdDeviation="0.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="8" y="8" width="4" height="4" fill="rgba(255,215,0,0.9)" rx="1"/><line x1="6" y1="10" x2="2" y2="10" stroke="rgba(0,212,255,0.8)" stroke-width="1"/><line x1="14" y1="10" x2="18" y2="10" stroke="rgba(0,212,255,0.8)" stroke-width="1"/><line x1="10" y1="6" x2="10" y2="2" stroke="rgba(153,69,255,0.8)" stroke-width="1"/><line x1="10" y1="14" x2="10" y2="18" stroke="rgba(153,69,255,0.8)" stroke-width="1" filter="url(%23satGlow)"/></svg>'), grab !important;
+}
+
+/* Grabbing cursor: Clenched satellite */
+.dragging, .grabbing {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><filter id="clenchGlow"><feGaussianBlur stdDeviation="0.8" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="7" y="7" width="6" height="6" fill="rgba(255,71,87,0.9)" rx="1"/><line x1="5" y1="10" x2="3" y2="8" stroke="rgba(0,212,255,0.9)" stroke-width="2"/><line x1="15" y1="10" x2="17" y2="12" stroke="rgba(0,212,255,0.9)" stroke-width="2"/><line x1="10" y1="5" x2="8" y2="3" stroke="rgba(153,69,255,0.9)" stroke-width="2"/><line x1="10" y1="15" x2="12" y2="17" stroke="rgba(153,69,255,0.9)" stroke-width="2" filter="url(%23clenchGlow)"/></svg>'), grabbing !important;
+}
+
+/* Not allowed: Red crossed comet */
+*:disabled, .not-allowed, .disabled {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><filter id="cometGlow"><feGaussianBlur stdDeviation="1" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><circle cx="12" cy="12" r="8" fill="none" stroke="rgba(255,71,87,0.8)" stroke-width="2"/><path d="M6,6 L18,18 M18,6 L6,18" stroke="rgba(255,71,87,0.9)" stroke-width="3"/><path d="M2,2 L8,8" stroke="rgba(255,140,0,0.7)" stroke-width="2"/><circle cx="2" cy="2" r="2" fill="rgba(255,215,0,0.8)" filter="url(%23cometGlow)"/></svg>'), not-allowed !important;
+}
+
+/* Resize cursors: Thin thruster arrows with micro glow */
+.resize-ew, [style*="cursor: ew-resize"], [style*="cursor: e-resize"], [style*="cursor: w-resize"] {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="16" viewBox="0 0 24 16"><defs><filter id="thrusterGlow"><feGaussianBlur stdDeviation="0.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M2,8 L8,4 L8,12 Z" fill="rgba(0,212,255,0.8)" filter="url(%23thrusterGlow)"/><path d="M22,8 L16,4 L16,12 Z" fill="rgba(0,212,255,0.8)" filter="url(%23thrusterGlow)"/><line x1="8" y1="8" x2="16" y2="8" stroke="rgba(153,69,255,0.7)" stroke-width="1"/></svg>'), ew-resize !important;
+}
+
+.resize-ns, [style*="cursor: ns-resize"], [style*="cursor: n-resize"], [style*="cursor: s-resize"] {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="24" viewBox="0 0 16 24"><defs><filter id="thrusterGlowNS"><feGaussianBlur stdDeviation="0.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M8,2 L4,8 L12,8 Z" fill="rgba(0,212,255,0.8)" filter="url(%23thrusterGlowNS)"/><path d="M8,22 L4,16 L12,16 Z" fill="rgba(0,212,255,0.8)" filter="url(%23thrusterGlowNS)"/><line x1="8" y1="8" x2="8" y2="16" stroke="rgba(153,69,255,0.7)" stroke-width="1"/></svg>'), ns-resize !important;
+}
+
+/* Waiting/Busy: Spinning galaxy ring */
+.loading, .busy, [aria-busy="true"], .spinner-cursor {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><filter id="galaxyGlow"><feGaussianBlur stdDeviation="1" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 12 12" to="360 12 12" dur="2s" repeatCount="indefinite"/></defs><circle cx="12" cy="12" r="8" fill="none" stroke="rgba(153,69,255,0.8)" stroke-width="2" stroke-dasharray="8 4" filter="url(%23galaxyGlow)"><animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 12 12" to="360 12 12" dur="1.5s" repeatCount="indefinite"/></circle><circle cx="12" cy="12" r="3" fill="rgba(255,215,0,0.9)"/></svg>'), wait !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CURSOR CLASSES - For dynamic cursor changes via JavaScript
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Orbital theme utility classes */
+.cursor-orbital-default {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><filter id="glow"><feGaussianBlur stdDeviation="1" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><circle cx="12" cy="12" r="6" fill="none" stroke="rgba(153,69,255,0.9)" stroke-width="2" filter="url(%23glow)"/><ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="rgba(0,212,255,0.7)" stroke-width="1.5"/><circle cx="12" cy="12" r="2" fill="rgba(255,215,0,0.8)"/></svg>'), auto !important;
+}
+
+.cursor-star {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><filter id="starGlow"><feGaussianBlur stdDeviation="0.8" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M10,2 L11,8 L18,10 L11,12 L10,18 L9,12 L2,10 L9,8 Z" fill="rgba(0,212,255,0.9)" stroke="rgba(153,69,255,0.8)" stroke-width="1" filter="url(%23starGlow)"/></svg>'), pointer !important;
+}
+
+.cursor-laser {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="28" viewBox="0 0 20 28"><defs><filter id="utilityGoldenGlow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><line x1="10" y1="4" x2="10" y2="24" stroke="rgba(255,215,0,1)" stroke-width="4" filter="url(%23utilityGoldenGlow)"/><line x1="10" y1="4" x2="10" y2="24" stroke="rgba(255,255,255,0.9)" stroke-width="2"/><rect x="3" y="2" width="14" height="3" fill="rgba(255,215,0,1)" rx="1.5"/><rect x="3" y="23" width="14" height="3" fill="rgba(255,215,0,1)" rx="1.5"/><circle cx="10" cy="14" r="2" fill="rgba(255,140,0,0.9)"/></svg>'), text !important;
+}
+
+.cursor-satellite {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><filter id="satGlow"><feGaussianBlur stdDeviation="0.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="8" y="8" width="4" height="4" fill="rgba(255,215,0,0.9)" rx="1"/><line x1="6" y1="10" x2="2" y2="10" stroke="rgba(0,212,255,0.8)" stroke-width="1"/><line x1="14" y1="10" x2="18" y2="10" stroke="rgba(0,212,255,0.8)" stroke-width="1"/><line x1="10" y1="6" x2="10" y2="2" stroke="rgba(153,69,255,0.8)" stroke-width="1"/><line x1="10" y1="14" x2="10" y2="18" stroke="rgba(153,69,255,0.8)" stroke-width="1" filter="url(%23satGlow)"/></svg>'), grab !important;
+}
+
+.cursor-galaxy {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><filter id="galaxyGlow"><feGaussianBlur stdDeviation="1" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 12 12" to="360 12 12" dur="2s" repeatCount="indefinite"/></defs><circle cx="12" cy="12" r="8" fill="none" stroke="rgba(153,69,255,0.8)" stroke-width="2" stroke-dasharray="8 4" filter="url(%23galaxyGlow)"><animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 12 12" to="360 12 12" dur="1.5s" repeatCount="indefinite"/></circle><circle cx="12" cy="12" r="3" fill="rgba(255,215,0,0.9)"/></svg>'), wait !important;
+}
+
+.cursor-comet {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><filter id="cometGlow"><feGaussianBlur stdDeviation="1" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><circle cx="12" cy="12" r="8" fill="none" stroke="rgba(255,71,87,0.8)" stroke-width="2"/><path d="M6,6 L18,18 M18,6 L6,18" stroke="rgba(255,71,87,0.9)" stroke-width="3"/><path d="M2,2 L8,8" stroke="rgba(255,140,0,0.7)" stroke-width="2"/><circle cx="2" cy="2" r="2" fill="rgba(255,215,0,0.8)" filter="url(%23cometGlow)"/></svg>'), not-allowed !important;
+}
+
+/* --- 12. Accessibility Improvements --- */
+:focus {
+    outline: 2px solid var(--electric-blue);
+    outline-offset: 2px;
+    box-shadow: 0 0 10px var(--ui-glow);
+}

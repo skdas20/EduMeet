@@ -15,11 +15,19 @@ class WebRTCManager {
         
         this.isVideoEnabled = true;
         this.isAudioEnabled = true;
+        this.mediaEncoder = null;
     }
 
     init(socketHandler) {
         this.socketHandler = socketHandler;
         this.bindSocketEvents();
+        
+        // Initialize media encoder for professional quality
+        if (typeof MediaEncoder !== 'undefined') {
+            this.mediaEncoder = new MediaEncoder();
+            console.log('Media encoder initialized');
+        }
+        
         console.log('WebRTC Manager initialized');
     }
 
@@ -36,14 +44,29 @@ class WebRTCManager {
 
             const constraints = {
                 video: this.isVideoEnabled ? {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    frameRate: { ideal: 30 }
+                    width: { ideal: 1920, min: 1280 },
+                    height: { ideal: 1080, min: 720 },
+                    frameRate: { ideal: 30, min: 24 },
+                    aspectRatio: { ideal: 16/9 },
+                    facingMode: 'user'
                 } : false,
                 audio: this.isAudioEnabled ? {
                     echoCancellation: true,
                     noiseSuppression: true,
-                    autoGainControl: true
+                    autoGainControl: true,
+                    sampleRate: { ideal: 48000, min: 44100 },
+                    channelCount: { ideal: 2, min: 1 },
+                    sampleSize: { ideal: 16, min: 16 },
+                    latency: { ideal: 0.01, max: 0.05 },
+                    // Professional audio processing
+                    googEchoCancellation: true,
+                    googExperimentalEchoCancellation: true,
+                    googAutoGainControl: true,
+                    googExperimentalAutoGainControl: true,
+                    googNoiseSuppression: true,
+                    googExperimentalNoiseSuppression: true,
+                    googHighpassFilter: true,
+                    googTypingNoiseDetection: true
                 } : false
             };
 
@@ -115,8 +138,17 @@ class WebRTCManager {
 
     async createPeerConnection(participantId) {
         const peerConnection = new RTCPeerConnection({
-            iceServers: this.iceServers
+            iceServers: this.iceServers,
+            bundlePolicy: 'balanced',
+            rtcpMuxPolicy: 'require',
+            iceCandidatePoolSize: 10,
+            sdpSemantics: 'unified-plan'
         });
+        
+        // Configure professional encoding if available
+        if (this.mediaEncoder) {
+            this.mediaEncoder.configurePeerConnection(peerConnection);
+        }
 
         this.makingOffer.set(participantId, false);
 
@@ -389,7 +421,20 @@ class WebRTCManager {
                             audio: {
                                 echoCancellation: true,
                                 noiseSuppression: true,
-                                autoGainControl: true
+                                autoGainControl: true,
+                                sampleRate: { ideal: 48000, min: 44100 },
+                                channelCount: { ideal: 2, min: 1 },
+                                sampleSize: { ideal: 16, min: 16 },
+                                latency: { ideal: 0.01, max: 0.05 },
+                                // Professional audio processing
+                                googEchoCancellation: true,
+                                googExperimentalEchoCancellation: true,
+                                googAutoGainControl: true,
+                                googExperimentalAutoGainControl: true,
+                                googNoiseSuppression: true,
+                                googExperimentalNoiseSuppression: true,
+                                googHighpassFilter: true,
+                                googTypingNoiseDetection: true
                             }
                         });
                         

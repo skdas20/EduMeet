@@ -327,11 +327,14 @@ class MediaSoupClient {
         try {
             const screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
-                    width: { max: 1920 },
-                    height: { max: 1080 },
-                    frameRate: { max: 30 }
+                    frameRate: { max: 30 },
+                    cursor: 'always'
+                    // Remove resolution constraints to capture full screen
                 },
-                audio: true
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true
+                }
             });
 
             const videoTrack = screenStream.getVideoTracks()[0];

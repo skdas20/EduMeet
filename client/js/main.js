@@ -10,6 +10,10 @@ class EduMeet {
         
         // Participants
         this.participants = [];
+        this.waitingParticipants = [];
+        this.canAdmitParticipants = false;
+        this.isCreator = false;
+        this.isInWaitingRoom = false;
         
         // Media streams
         this.localVideoStream = null;
@@ -22,10 +26,14 @@ class EduMeet {
         this.activePanel = null;
         this.isCanvasActive = false;
         this.pinnedParticipant = null;
+        this.subtitlesEnabled = false;
         
         // Screen sharing state
         this.isScreenSharing = false;
         this.screenStream = null;
+        
+        // Quality management
+        this.qualityManager = null;
         
         // Recording state
         this.isRecording = false;
@@ -89,6 +97,11 @@ class EduMeet {
         componentInit('UIControls', () => {
             if (typeof UIControls === 'undefined') return; // optional
             this.uiControls = new UIControls(this);
+        });
+
+        componentInit('QualityManager', () => {
+            if (typeof QualityManager === 'undefined') return; // optional
+            this.qualityManager = new QualityManager(this);
         });
 
         console.log('Components initialization complete');
@@ -198,7 +211,7 @@ class EduMeet {
         const shareScreen = document.getElementById('shareScreen');
         const leaveRoom = document.getElementById('leaveRoom');
         const raiseHand = document.getElementById('raiseHand');
-        const toggleCanvasControl = document.getElementById('toggleCanvasControl');
+        // Note: Canvas button is handled in bindHeaderControls() method
 
         if (toggleMic) {
             toggleMic.addEventListener('click', () => this.toggleMicrophone());
@@ -215,38 +228,250 @@ class EduMeet {
         if (raiseHand) {
             raiseHand.addEventListener('click', () => this.raiseHand());
         }
-        if (toggleCanvasControl) {
-            toggleCanvasControl.addEventListener('click', () => this.toggleCanvas());
+        // Reaction button
+        const sendReactionBtn = document.getElementById('sendReaction');
+        if (sendReactionBtn) {
+            sendReactionBtn.addEventListener('click', () => this.sendReaction());
         }
 
+        // Emoji picker event listeners
+        const emojiOptions = document.querySelectorAll('.emoji-option');
+        emojiOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                const emoji = e.target.getAttribute('data-emoji');
+                this.selectEmoji(emoji);
+            });
+        });
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', (e) => {
+            const emojiPicker = document.getElementById('emojiPicker');
+            const sendReactionBtn = document.getElementById('sendReaction');
+            
+            if (emojiPicker && sendReactionBtn && 
+                !emojiPicker.contains(e.target) && 
+                !sendReactionBtn.contains(e.target)) {
+                emojiPicker.classList.remove('show');
+            }
+        });
+
+        // Wait for DOM to be fully ready - add a delay
+        setTimeout(() => {
+            this.bindHeaderControls();
+        }, 100);
+    }
+
+    bindHeaderControls() {
         // Header controls
         const toggleChat = document.getElementById('toggleChat');
         const toggleCanvas = document.getElementById('toggleCanvas');
         const toggleParticipants = document.getElementById('toggleParticipants');
         const settingsBtn = document.getElementById('settingsBtn');
 
+        console.log('🔧 Binding header controls...');
+        console.log('Button elements found:', {
+            toggleChat: !!toggleChat,
+            toggleCanvas: !!toggleCanvas, 
+            toggleParticipants: !!toggleParticipants,
+            settingsBtn: !!settingsBtn
+        });
+
+        // Test if elements are clickable
         if (toggleChat) {
-            toggleChat.addEventListener('click', () => this.togglePanel('chat'));
+            const styles = window.getComputedStyle(toggleChat);
+            console.log('Chat button style:', {
+                pointerEvents: styles.pointerEvents,
+                display: styles.display,
+                visibility: styles.visibility,
+                position: styles.position,
+                zIndex: styles.zIndex
+            });
         }
+
+        // Add global click test
+        document.addEventListener('click', (e) => {
+            if (e.target.id && e.target.id.startsWith('toggle')) {
+                console.log('🎯 Global click detected on:', e.target.id, e.target);
+            }
+        });
+
+        if (toggleChat) {
+            console.log('✅ Binding chat button');
+            toggleChat.addEventListener('click', (e) => {
+                console.log('🎯 Chat button clicked!');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Direct approach - force show chat panel
+                const chatPanel = document.getElementById('chatPanel');
+                const sidebar = document.querySelector('.sidebar');
+                
+                if (chatPanel && sidebar) {
+                    console.log('🔍 Chat elements found:', {
+                        chatPanel: !!chatPanel,
+                        sidebar: !!sidebar,
+                        chatPanelClasses: chatPanel.className,
+                        sidebarClasses: sidebar.className
+                    });
+                    
+                    // Toggle visibility
+                    const isVisible = chatPanel.classList.contains('active');
+                    console.log('🔍 Is chat visible?', isVisible);
+                    
+                    if (isVisible) {
+                        console.log('🔄 Hiding chat panel');
+                        chatPanel.classList.remove('active');
+                        sidebar.classList.remove('visible');
+                    } else {
+                        console.log('🔄 Showing chat panel');
+                        // Hide other panels
+                        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                        
+                        // Show chat panel
+                        sidebar.classList.add('visible');
+                        chatPanel.classList.add('active');
+                        this.activePanel = 'chat';
+                        
+                        console.log('✅ Chat panel should now be visible');
+                        console.log('🔍 Final classes:', {
+                            chatPanelClasses: chatPanel.className,
+                            sidebarClasses: sidebar.className
+                        });
+                    }
+                } else {
+                    console.log('❌ Missing elements:', {
+                        chatPanel: !!chatPanel,
+                        sidebar: !!sidebar
+                    });
+                }
+            });
+        } else {
+            console.log('❌ Chat button not found');
+        }
+        
         if (toggleCanvas) {
-            toggleCanvas.addEventListener('click', () => this.toggleCanvas());
+            console.log('✅ Binding canvas button');
+            toggleCanvas.addEventListener('click', (e) => {
+                console.log('🎯 Canvas button clicked!');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Use the togglePanel approach for consistency
+                this.togglePanel('canvas');
+            });
+        } else {
+            console.log('❌ Canvas button not found');
         }
+        
         if (toggleParticipants) {
-            toggleParticipants.addEventListener('click', () => this.togglePanel('participants'));
+            console.log('✅ Binding participants button');
+            toggleParticipants.addEventListener('click', (e) => {
+                console.log('🎯 Participants button clicked!');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Direct approach - force show participants panel
+                const participantsPanel = document.getElementById('participantsPanel');
+                const sidebar = document.querySelector('.sidebar');
+                
+                if (participantsPanel && sidebar) {
+                    console.log('🔍 Participants elements found:', {
+                        participantsPanel: !!participantsPanel,
+                        sidebar: !!sidebar,
+                        participantsPanelClasses: participantsPanel.className,
+                        sidebarClasses: sidebar.className
+                    });
+                    
+                    // Toggle visibility
+                    const isVisible = participantsPanel.classList.contains('active');
+                    console.log('🔍 Is participants visible?', isVisible);
+                    
+                    if (isVisible) {
+                        console.log('🔄 Hiding participants panel');
+                        participantsPanel.classList.remove('active');
+                        sidebar.classList.remove('visible');
+                    } else {
+                        console.log('🔄 Showing participants panel');
+                        // Hide other panels
+                        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                        
+                        // Show participants panel
+                        sidebar.classList.add('visible');
+                        participantsPanel.classList.add('active');
+                        this.activePanel = 'participants';
+                        
+                        console.log('✅ Participants panel should now be visible');
+                        console.log('🔍 Final classes:', {
+                            participantsPanelClasses: participantsPanel.className,
+                            sidebarClasses: sidebar.className
+                        });
+                    }
+                } else {
+                    console.log('❌ Missing elements:', {
+                        participantsPanel: !!participantsPanel,
+                        sidebar: !!sidebar
+                    });
+                }
+            });
+        } else {
+            console.log('❌ Participants button not found');
         }
+        
         if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => this.showSettings());
+            console.log('✅ Binding settings button');
+            settingsBtn.addEventListener('click', (e) => {
+                console.log('🎯 Settings button clicked!');
+                e.preventDefault();
+                e.stopPropagation();
+                this.showSettings();
+            });
+        } else {
+            console.log('❌ Settings button not found');
         }
+
+        // Subtitles toggle - moved to bindHeaderControls
+        const subtitlesBtn = document.getElementById('toggleSubtitles');
+        if (subtitlesBtn) {
+            console.log('✅ Binding subtitles button');
+            subtitlesBtn.addEventListener('click', (e) => {
+                console.log('🎯 Subtitles button clicked!');
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleSubtitles();
+            });
+        } else {
+            console.log('❌ Subtitles button not found');
+        }
+
+        // Close panel buttons - moved to avoid duplicates
 
         // Panel close buttons
         const closeChat = document.getElementById('closeChat');
         const closeParticipants = document.getElementById('closeParticipants');
 
         if (closeChat) {
-            closeChat.addEventListener('click', () => this.closePanel());
+            closeChat.addEventListener('click', () => {
+                console.log('Close chat clicked');
+                this.closePanel();
+            });
         }
         if (closeParticipants) {
-            closeParticipants.addEventListener('click', () => this.closePanel());
+            closeParticipants.addEventListener('click', () => {
+                console.log('Close participants clicked');
+                this.closePanel();
+            });
+        }
+
+        // Add click handler for pinned video area to allow unpinning
+        const pinnedVideo = document.getElementById('pinnedVideo');
+        if (pinnedVideo) {
+            pinnedVideo.addEventListener('click', (e) => {
+                if (e.target === pinnedVideo || e.target.tagName === 'VIDEO') {
+                    if (this.pinnedParticipant) {
+                        this.togglePinParticipant(this.pinnedParticipant);
+                    }
+                }
+            });
         }
 
         // Chat
@@ -400,15 +625,21 @@ class EduMeet {
             
             // Connect to room
             if (this.socketHandler) {
-                await this.socketHandler.joinRoom(roomId, userName, isTeacher);
-            }
-            
-            this.updateLoadingText('Setting up interface...');
-            await this.delay(500);
+                const joinResult = await this.socketHandler.joinRoom(roomId, userName, isTeacher);
+                if (joinResult && joinResult.waiting) {
+                    // waiting room: socket-handler will show waiting screen when server emits event
+                    this.updateLoadingText('Waiting for host to admit you...');
+                    // keep loading screen briefly before showing waiting UI
+                    await this.delay(300);
+                } else {
+                    this.updateLoadingText('Setting up interface...');
+                    await this.delay(500);
 
-            // Switch to meeting interface
-            this.showMeetingRoom();
-            this.startTimer();
+                    // Switch to meeting interface
+                    this.showMeetingRoom();
+                    this.startTimer();
+                }
+            }
             
         } catch (error) {
             console.error('Failed to join room:', error);
@@ -476,17 +707,32 @@ class EduMeet {
                 
                 console.log('WebRTC media initialized');
             } else {
-                // Fallback to simple media access
+                // Professional-grade media constraints for HD quality
                 const constraints = {
                     video: this.isVideoEnabled ? {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        frameRate: { ideal: 30 }
+                        width: { ideal: 1920, min: 1280 },
+                        height: { ideal: 1080, min: 720 },
+                        frameRate: { ideal: 30, min: 24 },
+                        aspectRatio: { ideal: 16/9 },
+                        facingMode: 'user'
                     } : false,
                     audio: this.isAudioEnabled ? {
                         echoCancellation: true,
                         noiseSuppression: true,
-                        sampleRate: 48000
+                        autoGainControl: true,
+                        sampleRate: { ideal: 48000, min: 44100 },
+                        channelCount: { ideal: 2, min: 1 },
+                        sampleSize: { ideal: 16, min: 16 },
+                        latency: { ideal: 0.01, max: 0.05 },
+                        // Professional audio processing
+                        googEchoCancellation: true,
+                        googExperimentalEchoCancellation: true,
+                        googAutoGainControl: true,
+                        googExperimentalAutoGainControl: true,
+                        googNoiseSuppression: true,
+                        googExperimentalNoiseSuppression: true,
+                        googHighpassFilter: true,
+                        googTypingNoiseDetection: true
                     } : false
                 };
 
@@ -608,6 +854,15 @@ class EduMeet {
             video.muted = isLocal; // Mute local video to prevent feedback
             video.playsInline = true;
             video.style.display = hasVideo ? 'block' : 'none';
+            
+            // Detect screen sharing based on video track settings
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack && this.isScreenSharing && isLocal) {
+                // Only mark as screen sharing if we're actually screen sharing
+                videoTile.classList.add('screen-sharing');
+                video.setAttribute('data-screen-share', 'true');
+            }
+            
             videoTile.appendChild(video);
             
             // Also add avatar for when video is disabled
@@ -763,34 +1018,91 @@ class EduMeet {
         if (this.pinnedParticipant === participantId) {
             // Unpin
             this.pinnedParticipant = null;
-            document.getElementById('pinnedVideo').classList.add('hidden');
-            document.getElementById('videoGrid').classList.remove('hidden');
+            const pinnedVideo = document.getElementById('pinnedVideo');
+            const videoGrid = document.getElementById('videoGrid');
             
-            // Remove pin styling
+            // Hide pinned video area
+            pinnedVideo.classList.add('hidden');
+            pinnedVideo.innerHTML = '';
+            
+            // CSS will handle showing video grid normally
+            
+            // Remove pin styling from all tiles
             document.querySelectorAll('.video-tile.pinned').forEach(tile => {
                 tile.classList.remove('pinned');
             });
+            
+            // Update pin button state
+            const pinBtn = document.querySelector(`#video-${participantId} .pin-btn`);
+            if (pinBtn) {
+                pinBtn.classList.remove('active');
+                pinBtn.title = 'Pin participant';
+            }
         } else {
             // Pin new participant
+            const previousPinned = this.pinnedParticipant;
             this.pinnedParticipant = participantId;
             const videoTile = document.getElementById(`video-${participantId}`);
             
             if (videoTile) {
-                // Move to pinned area
+                // Remove previous pin styling
+                if (previousPinned) {
+                    const prevTile = document.getElementById(`video-${previousPinned}`);
+                    if (prevTile) {
+                        prevTile.classList.remove('pinned');
+                        const prevPinBtn = prevTile.querySelector('.pin-btn');
+                        if (prevPinBtn) {
+                            prevPinBtn.classList.remove('active');
+                            prevPinBtn.title = 'Pin participant';
+                        }
+                    }
+                }
+                
+                // Create pinned video
                 const pinnedVideo = document.getElementById('pinnedVideo');
-                const videoClone = videoTile.cloneNode(true);
-                videoClone.id = `pinned-${participantId}`;
-                videoClone.classList.add('pinned');
+                const videoElement = videoTile.querySelector('video');
                 
-                pinnedVideo.innerHTML = '';
-                pinnedVideo.appendChild(videoClone);
-                pinnedVideo.classList.remove('hidden');
-                
-                // Hide grid or show smaller version
-                document.getElementById('videoGrid').style.opacity = '0.3';
-                
-                // Add pin styling
-                videoTile.classList.add('pinned');
+                if (videoElement && videoElement.srcObject) {
+                    // Create new video element for pinned area
+                    const pinnedVideoElement = document.createElement('video');
+                    pinnedVideoElement.srcObject = videoElement.srcObject;
+                    pinnedVideoElement.autoplay = true;
+                    pinnedVideoElement.playsInline = true;
+                    pinnedVideoElement.muted = participantId === 'local'; // Mute only local video
+                    
+                    // Create participant info overlay
+                    const participantInfo = videoTile.querySelector('.participant-info');
+                    const infoClone = participantInfo ? participantInfo.cloneNode(true) : null;
+                    
+                    // Create close button for pinned video
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'pinned-close-btn';
+                    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    closeBtn.onclick = () => this.unpinParticipant();
+                    
+                    // Clear and populate pinned video container
+                    pinnedVideo.innerHTML = '';
+                    pinnedVideo.appendChild(pinnedVideoElement);
+                    pinnedVideo.appendChild(closeBtn);
+                    if (infoClone) {
+                        pinnedVideo.appendChild(infoClone);
+                    }
+                    
+                    // Show pinned video
+                    pinnedVideo.classList.remove('hidden');
+                    
+                    // CSS will handle dimming the background grid automatically
+                    
+                    // Add pin styling to original tile
+                    videoTile.classList.add('pinned');
+                    
+                    // Update pin button state
+                    const pinBtn = videoTile.querySelector('.pin-btn');
+                    if (pinBtn) {
+                        pinBtn.classList.add('active');
+                        pinBtn.title = 'Unpin participant';
+                    }
+                }
             }
         }
 
@@ -927,11 +1239,12 @@ class EduMeet {
         }
         
         try {
-            // Request screen sharing permission
+            // Request screen sharing permission with optimal settings
             const screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
                     cursor: 'always',
                     frameRate: { ideal: 30, max: 60 }
+                    // Remove any resolution constraints to capture full screen
                 },
                 audio: {
                     echoCancellation: true,
@@ -960,6 +1273,10 @@ class EduMeet {
             const localTile = document.getElementById('video-local');
             if (localTile) {
                 localTile.classList.add('screen-sharing');
+                const video = localTile.querySelector('video');
+                if (video) {
+                    video.setAttribute('data-screen-share', 'true');
+                }
             }
             
             this.showNotification('Screen sharing started', 'success');
@@ -972,7 +1289,8 @@ class EduMeet {
             // Notify other participants via socket
             if (this.socketHandler) {
                 this.socketHandler.socket.emit('screen-share-started', {
-                    participantId: 'local'
+                    participantId: this.socketHandler.socket.id || 'local',
+                    userId: this.currentUser?.id || this.socketHandler.socket.id
                 });
             }
 
@@ -991,18 +1309,33 @@ class EduMeet {
                 this.screenStream = null;
             }
 
-            // Get original camera stream back
+            // Get original camera stream back with professional quality
             if (this.isVideoEnabled || this.isAudioEnabled) {
                 const constraints = {
                     video: this.isVideoEnabled ? {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        frameRate: { ideal: 30 }
+                        width: { ideal: 1920, min: 1280 },
+                        height: { ideal: 1080, min: 720 },
+                        frameRate: { ideal: 30, min: 24 },
+                        aspectRatio: { ideal: 16/9 },
+                        facingMode: 'user'
                     } : false,
                     audio: this.isAudioEnabled ? {
                         echoCancellation: true,
                         noiseSuppression: true,
-                        sampleRate: 48000
+                        autoGainControl: true,
+                        sampleRate: { ideal: 48000, min: 44100 },
+                        channelCount: { ideal: 2, min: 1 },
+                        sampleSize: { ideal: 16, min: 16 },
+                        latency: { ideal: 0.01, max: 0.05 },
+                        // Professional audio processing
+                        googEchoCancellation: true,
+                        googExperimentalEchoCancellation: true,
+                        googAutoGainControl: true,
+                        googExperimentalAutoGainControl: true,
+                        googNoiseSuppression: true,
+                        googExperimentalNoiseSuppression: true,
+                        googHighpassFilter: true,
+                        googTypingNoiseDetection: true
                     } : false
                 };
 
@@ -1032,6 +1365,10 @@ class EduMeet {
             const localTile = document.getElementById('video-local');
             if (localTile) {
                 localTile.classList.remove('screen-sharing');
+                const video = localTile.querySelector('video');
+                if (video) {
+                    video.removeAttribute('data-screen-share');
+                }
             }
             
             this.showNotification('Screen sharing stopped', 'info');
@@ -1039,7 +1376,8 @@ class EduMeet {
             // Notify other participants via socket
             if (this.socketHandler) {
                 this.socketHandler.socket.emit('screen-share-stopped', {
-                    participantId: 'local'
+                    participantId: this.socketHandler.socket.id || 'local',
+                    userId: this.currentUser?.id || this.socketHandler.socket.id
                 });
             }
             
@@ -1172,9 +1510,8 @@ class EduMeet {
             const displayStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
                     mediaSource: 'browser',
-                    frameRate: { ideal: 30 },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
+                    frameRate: { ideal: 30 }
+                    // Removed width/height constraints to capture full resolution
                 },
                 audio: true
             });
@@ -1185,9 +1522,8 @@ class EduMeet {
             console.log('Browser tab capture not available, using screen capture');
             return await navigator.mediaDevices.getDisplayMedia({
                 video: {
-                    frameRate: { ideal: 30 },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
+                    frameRate: { ideal: 30 }
+                    // Removed width/height constraints to capture full resolution
                 },
                 audio: true
             });
@@ -1312,7 +1648,7 @@ class EduMeet {
         // Allow both teachers and students to use canvas
         this.isCanvasActive = !this.isCanvasActive;
         const container = document.getElementById('canvasContainer');
-        const button = document.getElementById('toggleCanvasControl');
+        const button = document.getElementById('toggleCanvas');
         
         if (this.isCanvasActive) {
             container.classList.remove('hidden');
@@ -1344,9 +1680,10 @@ class EduMeet {
     }
 
     togglePanel(panelName) {
+        console.log('🎯 togglePanel called with:', panelName);
         const panels = {
             'chat': 'chatPanel',
-            'canvas': 'canvasContainer',
+            'canvas': 'canvasContainer', 
             'participants': 'participantsPanel'
         };
 
@@ -1354,38 +1691,121 @@ class EduMeet {
         const targetPanel = document.getElementById(panels[panelName]);
         const button = document.getElementById(`toggle${panelName.charAt(0).toUpperCase() + panelName.slice(1)}`);
 
+        console.log('🔍 Panel elements:', {
+            panelName,
+            panelId: panels[panelName],
+            sidebar: !!sidebar,
+            targetPanel: !!targetPanel,
+            button: !!button,
+            currentActivePanel: this.activePanel
+        });
+
         if (this.activePanel === panelName) {
             // Close current panel
             this.closePanel();
         } else {
-            // Close other panels
+            // Close other panels first
             this.closePanel();
             
             // Open target panel
             if (targetPanel) {
-                targetPanel.classList.add('active');
-                if (button) button.classList.add('active');
-                this.activePanel = panelName;
-                
-                if (sidebar && window.innerWidth <= 768) {
-                    sidebar.classList.add('active');
+                // For canvas, handle differently since it's not in sidebar
+                if (panelName === 'canvas') {
+                    console.log('🎨 Activating canvas panel');
+                    console.log('🎨 Canvas element:', targetPanel);
+                    console.log('🎨 Canvas classes before:', targetPanel.className);
+                    
+                    targetPanel.classList.remove('hidden');
+                    targetPanel.classList.add('active'); // Enable CSS transform
+                    targetPanel.style.display = 'flex';
+                    targetPanel.style.visibility = 'visible';
+                    targetPanel.style.opacity = '1';
+                    
+                    if (button) button.classList.add('active');
+                    this.activePanel = panelName;
+                    
+                    console.log('🎨 Canvas classes after:', targetPanel.className);
+                    console.log('🎨 Canvas style:', targetPanel.style.cssText);
+                    
+                    // Initialize canvas if not already done
+                    if (!this.isCanvasActive && this.canvasManager) {
+                        console.log('🎨 Initializing canvas manager');
+                        this.canvasManager.activate();
+                        // Resize canvas when it becomes visible
+                        setTimeout(() => {
+                            if (this.canvasManager.resizeCanvas) {
+                                this.canvasManager.resizeCanvas();
+                            }
+                        }, 100);
+                        this.isCanvasActive = true;
+                    } else {
+                        console.log('🎨 Canvas manager status:', {
+                            isCanvasActive: this.isCanvasActive,
+                            hasCanvasManager: !!this.canvasManager
+                        });
+                    }
+                } else {
+                    // For chat and participants panels in sidebar
+                    console.log('🚀 Activating sidebar panel:', panelName);
+                    
+                    // First make sure all other panels in sidebar are hidden
+                    document.querySelectorAll('.sidebar .panel').forEach(panel => {
+                        panel.classList.remove('active');
+                        panel.style.display = 'none';
+                    });
+                    
+                    // Show the target panel
+                    targetPanel.classList.add('active');
+                    targetPanel.style.display = 'flex';
+                    
+                    // Show the sidebar itself
+                    sidebar.classList.add('visible');
+                    sidebar.style.display = 'flex';
+                    
+                    // Add button active state
+                    if (button) button.classList.add('active');
+                    
+                    // Mark as active
+                    this.activePanel = panelName;
+                    
+                    console.log('✅ Sidebar should now be visible with panel:', panelName);
+                    console.log('📊 Sidebar classes:', sidebar.className);
+                    console.log('📊 Panel classes:', targetPanel.className);
                 }
+            } else {
+                console.error('Target panel not found for:', panelName);
             }
         }
     }
 
     closePanel() {
+        console.log('🔒 Closing panel:', this.activePanel);
+        
+        // Close regular panels
         document.querySelectorAll('.panel').forEach(panel => {
             panel.classList.remove('active');
+            panel.style.display = 'none';
         });
         
+        // Close canvas
+        const canvasContainer = document.getElementById('canvasContainer');
+        if (canvasContainer) {
+            canvasContainer.classList.add('hidden');
+            canvasContainer.classList.remove('active'); // Remove active class for CSS transform
+            canvasContainer.style.display = 'none';
+        }
+        
+        // Remove active state from buttons
         document.querySelectorAll('.btn-header').forEach(btn => {
             btn.classList.remove('active');
         });
 
+        // Hide sidebar completely
         const sidebar = document.querySelector('.sidebar');
         if (sidebar) {
-            sidebar.classList.remove('active');
+            sidebar.classList.remove('visible', 'active');
+            sidebar.style.display = 'none';
+            console.log('🔒 Sidebar hidden');
         }
         
         this.activePanel = null;
@@ -1446,6 +1866,30 @@ class EduMeet {
         }
 
         participantsList.innerHTML = '';
+        // If we can admit, show waiting participants at top
+        if (this.canAdmitParticipants && this.waitingParticipants && this.waitingParticipants.length > 0) {
+            const waitingHeader = document.createElement('div');
+            waitingHeader.className = 'waiting-section';
+            waitingHeader.innerHTML = `<h4>Waiting to join</h4>`;
+            participantsList.appendChild(waitingHeader);
+
+            this.waitingParticipants.forEach(wp => {
+                const waitingItem = document.createElement('div');
+                waitingItem.className = 'participant-item waiting';
+                waitingItem.innerHTML = `
+                    <div class="participant-avatar">${wp.name.charAt(0).toUpperCase()}</div>
+                    <div class="participant-info">
+                        <div class="participant-name">${wp.name}</div>
+                        <div class="participant-status">Waiting</div>
+                    </div>
+                    <div class="participant-controls">
+                        <button class="btn btn-success btn-sm" onclick="window.eduMeet.admitParticipant('${wp.id}')">Admit</button>
+                        <button class="btn btn-danger btn-sm" onclick="window.eduMeet.denyParticipant('${wp.id}')">Deny</button>
+                    </div>
+                `;
+                participantsList.appendChild(waitingItem);
+            });
+        }
         
         // Always add current user first
         const allParticipants = [];
@@ -1623,6 +2067,11 @@ class EduMeet {
         if (this.mediasoupClient) {
             this.mediasoupClient.cleanup();
         }
+
+        // Clean up quality manager
+        if (this.qualityManager) {
+            this.qualityManager.cleanup();
+        }
     }
 
     handleResize() {
@@ -1758,6 +2207,309 @@ class EduMeet {
         );
     }
 
+    // Waiting Room UI Methods
+    showWaitingRoom(data) {
+        this.isInWaitingRoom = true;
+        
+        // Hide join screen
+        const joinScreen = document.getElementById('joinScreen');
+        if (joinScreen) joinScreen.style.display = 'none';
+        
+        // Show waiting room screen
+        let waitingScreen = document.getElementById('waitingScreen');
+        if (!waitingScreen) {
+            waitingScreen = this.createWaitingRoomScreen();
+            document.body.appendChild(waitingScreen);
+        }
+        
+        waitingScreen.style.display = 'flex';
+        
+        // Update message
+        const messageEl = waitingScreen.querySelector('.waiting-message');
+        if (messageEl) {
+            messageEl.textContent = data.message || 'Waiting for host to admit you...';
+        }
+        
+        // Update room info
+        const roomInfoEl = waitingScreen.querySelector('.waiting-room-info');
+        if (roomInfoEl) {
+            roomInfoEl.innerHTML = `
+                <h3>Joining Room: ${data.roomId}</h3>
+                <p>Your name: ${this.currentUser.name}</p>
+            `;
+        }
+    }
+
+    hideWaitingRoom() {
+        this.isInWaitingRoom = false;
+        const waitingScreen = document.getElementById('waitingScreen');
+        if (waitingScreen) {
+            waitingScreen.style.display = 'none';
+        }
+    }
+
+    showAccessDenied(message) {
+        this.showNotification(message || 'Access to the meeting was denied', 'error');
+        
+        // Redirect back to join screen
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 3000);
+    }
+
+    createWaitingRoomScreen() {
+        const waitingScreen = document.createElement('div');
+        waitingScreen.id = 'waitingScreen';
+        waitingScreen.className = 'waiting-screen';
+        waitingScreen.innerHTML = `
+            <div class="waiting-content">
+                <div class="waiting-spinner">
+                    <div class="spinner"></div>
+                </div>
+                <div class="waiting-room-info">
+                    <h3>Joining Room</h3>
+                </div>
+                <div class="waiting-message">
+                    Waiting for host to admit you...
+                </div>
+                <div class="waiting-actions">
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">
+                        Leave Waiting Room
+                    </button>
+                </div>
+            </div>
+        `;
+        return waitingScreen;
+    }
+
+    initializeWaitingRoomUI(waitingParticipants = []) {
+        if (!this.canAdmitParticipants) return;
+        
+        this.waitingParticipants = waitingParticipants;
+        
+        // Add waiting room panel to sidebar or create floating panel
+        this.createWaitingRoomPanel();
+        this.updateWaitingParticipantsList(waitingParticipants);
+    }
+
+    createWaitingRoomPanel() {
+        if (!this.canAdmitParticipants) return;
+    // Waiting room control will be shown via participants panel badge
+        
+        // Create waiting room panel
+        if (!document.getElementById('waitingRoomPanel')) {
+            const panel = document.createElement('div');
+            panel.id = 'waitingRoomPanel';
+            panel.className = 'waiting-room-panel';
+            panel.innerHTML = `
+                <div class="panel-header">
+                    <h3>Waiting Room</h3>
+                    <button class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">&times;</button>
+                </div>
+                <div class="panel-content">
+                    <div class="waiting-list" id="waitingList">
+                        <p class="no-waiting">No one is waiting</p>
+                    </div>
+                    <div class="waiting-room-settings">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="waitingRoomToggle" ${this.waitingRoomEnabled ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                            Enable Waiting Room
+                        </label>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(panel);
+            
+            // Add event listener for waiting room toggle
+            const toggle = panel.querySelector('#waitingRoomToggle');
+            if (toggle) {
+                toggle.addEventListener('change', (e) => {
+                    this.socketHandler.emitToggleWaitingRoom(e.target.checked);
+                });
+            }
+        }
+    }
+
+    // Play bell and flash participants badge when a join request arrives
+    showJoinRequestNotification(waitingParticipant) {
+        // Increment internal list (already added elsewhere)
+        // Play sound
+        try {
+            const audio = new Audio('assets/sounds/join.mp3');
+            audio.play().catch(() => {});
+        } catch (e) {
+            console.warn('Could not play notification sound', e);
+        }
+
+        // Flash badge and show small toast
+        this.showNotification(`${waitingParticipant.name} requested to join`, 'info');
+        this.updateParticipantsBadge();
+    }
+
+    updateParticipantsBadge() {
+        const badge = document.getElementById('participantsBadge');
+        if (!badge) return;
+        const count = this.waitingParticipants ? this.waitingParticipants.length : 0;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'flex' : 'none';
+        // add wiggle animation briefly
+        const btn = document.getElementById('toggleParticipants');
+        if (btn && count > 0) {
+            btn.classList.add('has-waiting');
+            setTimeout(() => btn.classList.remove('has-waiting'), 1200);
+        }
+    }
+
+    // Reaction sending and animation
+    sendReaction() {
+        const emojiPicker = document.getElementById('emojiPicker');
+        if (emojiPicker) {
+            // Toggle emoji picker visibility
+            if (emojiPicker.classList.contains('show')) {
+                emojiPicker.classList.remove('show');
+            } else {
+                emojiPicker.classList.add('show');
+                
+                // Hide picker after 5 seconds if no selection
+                setTimeout(() => {
+                    emojiPicker.classList.remove('show');
+                }, 5000);
+            }
+        }
+    }
+
+    // Method to actually send the selected emoji
+    selectEmoji(emoji) {
+        if (this.socketHandler) {
+            this.socketHandler.emit('reaction', { emoji });
+        }
+        // Animate locally on user's own tile
+        this.showReactionOnTile(this.currentUser?.id || 'local', emoji);
+        
+        // Hide picker after selection
+        const emojiPicker = document.getElementById('emojiPicker');
+        if (emojiPicker) {
+            emojiPicker.classList.remove('show');
+        }
+    }
+
+    showReactionOnTile(participantId, emoji) {
+        const videoTile = document.getElementById(`video-${participantId}`) || document.getElementById('pinnedVideo');
+        if (!videoTile) return;
+        const anim = document.createElement('div');
+        anim.className = 'reaction-anim';
+        anim.textContent = emoji;
+        videoTile.style.position = 'relative';
+        videoTile.appendChild(anim);
+        setTimeout(() => anim.remove(), 2000);
+    }
+
+    // Subtitles toggle (UI only placeholder)
+    toggleSubtitles() {
+        this.subtitlesEnabled = !this.subtitlesEnabled;
+        this.showNotification(`Subtitles ${this.subtitlesEnabled ? 'enabled' : 'disabled'}`, 'info');
+        const btn = document.getElementById('toggleSubtitles');
+        if (btn) btn.classList.toggle('active', this.subtitlesEnabled);
+    }
+
+    toggleWaitingRoomPanel() {
+        const panel = document.getElementById('waitingRoomPanel');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    addWaitingParticipantToUI(waitingParticipant) {
+        if (!this.canAdmitParticipants) return;
+        
+        this.waitingParticipants.push(waitingParticipant);
+    this.updateWaitingParticipantsList(this.waitingParticipants);
+    this.updateParticipantsBadge();
+        
+        // Show notification
+        this.showNotification(`${waitingParticipant.name} is waiting to join`, 'info');
+    }
+
+    removeWaitingParticipantFromUI(waitingParticipantId) {
+        if (!this.canAdmitParticipants) return;
+        
+        this.waitingParticipants = this.waitingParticipants.filter(wp => wp.id !== waitingParticipantId);
+    this.updateWaitingParticipantsList(this.waitingParticipants);
+    this.updateParticipantsBadge();
+    }
+
+    updateWaitingParticipantsList(waitingParticipants) {
+        if (!this.canAdmitParticipants) return;
+        
+        this.waitingParticipants = waitingParticipants;
+        const waitingList = document.getElementById('waitingList');
+        const waitingSection = document.getElementById('waitingSection');
+        
+        if (!waitingList || !waitingSection) return;
+        
+        if (waitingParticipants.length === 0) {
+            waitingSection.style.display = 'none';
+            waitingList.innerHTML = '';
+        } else {
+            waitingSection.style.display = 'block';
+            waitingList.innerHTML = waitingParticipants.map(wp => `
+                <div class="waiting-participant" data-id="${wp.id}">
+                    <div class="participant-info">
+                        <div class="participant-name">${wp.name}</div>
+                        <div class="participant-time">Waiting since ${new Date(wp.joinedAt).toLocaleTimeString()}</div>
+                    </div>
+                    <div class="participant-actions">
+                        <button class="btn btn-success btn-sm" onclick="window.eduMeet.admitParticipant('${wp.id}')">
+                            <i class="fas fa-check"></i> Admit
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="window.eduMeet.denyParticipant('${wp.id}')">
+                            <i class="fas fa-times"></i> Deny
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        this.updateParticipantsBadge();
+    }
+
+    admitParticipant(waitingParticipantId) {
+        if (!this.canAdmitParticipants) return;
+        
+        this.socketHandler.emitAdmitParticipant(waitingParticipantId);
+        
+        // Find participant name for notification
+        const participant = this.waitingParticipants.find(wp => wp.id === waitingParticipantId);
+        if (participant) {
+            this.showNotification(`Admitting ${participant.name} to the meeting`, 'success');
+        }
+    }
+
+    denyParticipant(waitingParticipantId) {
+        if (!this.canAdmitParticipants) return;
+        
+        this.socketHandler.emitDenyParticipant(waitingParticipantId);
+        
+        // Find participant name for notification
+        const participant = this.waitingParticipants.find(wp => wp.id === waitingParticipantId);
+        if (participant) {
+            this.showNotification(`Denied ${participant.name} access to the meeting`, 'info');
+        }
+    }
+
+    updateWaitingRoomSetting(enabled) {
+        this.waitingRoomEnabled = enabled;
+        
+        const toggle = document.getElementById('waitingRoomToggle');
+        if (toggle) {
+            toggle.checked = enabled;
+        }
+        
+        this.showNotification(`Waiting room ${enabled ? 'enabled' : 'disabled'}`, 'info');
+    }
+
     onParticipantToggle(participantId, type, enabled) {
         const videoTile = document.getElementById(`video-${participantId}`);
         if (videoTile) {
@@ -1773,6 +2525,63 @@ class EduMeet {
 // Initialize application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.eduMeet = new EduMeet();
+    
+    // Add debug methods for testing
+    window.testPanels = () => {
+        console.log('🔧 Testing panel functions...');
+        if (window.eduMeet) {
+            window.eduMeet.togglePanel('chat');
+        }
+    };
+    
+    window.testButton = (buttonId) => {
+        console.log('🔧 Testing button:', buttonId);
+        const btn = document.getElementById(buttonId);
+        if (btn) {
+            console.log('Button found:', btn);
+            btn.click();
+        } else {
+            console.log('Button not found');
+        }
+    };
+    
+    // Force show panels for testing
+    window.forceShowPanel = (panelName) => {
+        console.log('🔧 Force showing panel:', panelName);
+        const panelIds = {
+            'chat': 'chatPanel',
+            'participants': 'participantsPanel',
+            'canvas': 'canvasContainer'
+        };
+        
+        const panel = document.getElementById(panelIds[panelName]);
+        const sidebar = document.querySelector('.sidebar');
+        
+        console.log('Panel element:', panel);
+        console.log('Sidebar element:', sidebar);
+        
+        if (panel) {
+            panel.style.display = 'flex';
+            panel.style.visibility = 'visible';
+            panel.style.opacity = '1';
+            panel.classList.add('active');
+        }
+        
+        if (sidebar) {
+            sidebar.classList.add('visible');
+        }
+    };
+    
+    // Quick console commands for testing
+    window.showChat = () => window.forceShowPanel('chat');
+    window.showParticipants = () => window.forceShowPanel('participants');
+    window.showCanvas = () => window.forceShowPanel('canvas');
+    
+    console.log('🎯 Available test commands:');
+    console.log('- window.showChat()');
+    console.log('- window.showParticipants()');
+    console.log('- window.showCanvas()');
+    console.log('- window.testButton("toggleChat")');
 });
 
 // Handle page visibility changes
