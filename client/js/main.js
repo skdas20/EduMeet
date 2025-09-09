@@ -108,6 +108,14 @@ class EduMeet {
     }
 
     async initializeApp() {
+        // Check for saved session (auto-rejoin on page refresh)
+        const savedSession = this.getSavedSession();
+        if (savedSession) {
+            console.log('Found saved session, attempting auto-rejoin:', savedSession);
+            await this.autoRejoin(savedSession);
+            return;
+        }
+        
         // Show loading screen with realistic initialization steps
         await this.simulateLoading();
         
@@ -638,6 +646,9 @@ class EduMeet {
                     // Switch to meeting interface
                     this.showMeetingRoom();
                     this.startTimer();
+                    
+                    // Save session for auto-rejoin on refresh
+                    this.saveSession(roomId, userName, isTeacher);
                 }
             }
             
@@ -2193,6 +2204,7 @@ class EduMeet {
 
     leaveRoom() {
         if (confirm('Are you sure you want to leave the meeting?')) {
+            this.clearSession(); // Clear saved session when user explicitly leaves
             this.cleanup();
             window.location.href = '/';
         }
@@ -2680,6 +2692,115 @@ class EduMeet {
                 // Update video display
             } else if (type === 'audio') {
                 // Update audio indicators
+            }
+        }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // SESSION MANAGEMENT - Auto-rejoin on page refresh
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    saveSession(roomId, userName, isTeacher) {
+        try {
+            const sessionData = {
+                roomId: roomId,
+                userName: userName,
+                isTeacher: isTeacher,
+                savedAt: Date.now()
+            };
+            localStorage.setItem('edumeet_session', JSON.stringify(sessionData));
+            console.log('Session saved for auto-rejoin:', sessionData);
+        } catch (error) {
+            console.warn('Failed to save session:', error);
+        }
+    }
+
+    getSavedSession() {
+        try {
+            const sessionStr = localStorage.getItem('edumeet_session');
+            if (!sessionStr) return null;
+            
+            const sessionData = JSON.parse(sessionStr);
+            
+            // Check if session is not too old (expire after 24 hours)
+            const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+            if (Date.now() - sessionData.savedAt > maxAge) {
+                console.log('Saved session expired, clearing...');
+                this.clearSession();
+                return null;
+            }
+            
+            return sessionData;
+        } catch (error) {
+            console.warn('Failed to get saved session:', error);
+            this.clearSession();
+            return null;
+        }
+    }
+
+    clearSession() {
+        try {
+            localStorage.removeItem('edumeet_session');
+            console.log('Session cleared');
+        } catch (error) {
+            console.warn('Failed to clear session:', error);
+        }
+    }
+
+    async autoRejoin(sessionData) {
+        console.log('Auto-rejoining meeting...');
+        this.showLoadingScreen();
+        this.updateLoadingText('Rejoining meeting...');
+        
+        try {
+            // Set up user data
+            this.currentUser = {
+                name: sessionData.userName,
+                isTeacher: sessionData.isTeacher
+            };
+            this.roomId = sessionData.roomId;
+            this.isTeacher = sessionData.isTeacher;
+            
+            // Update URL
+            window.history.pushState({}, '', `/room/${sessionData.roomId}`);
+            
+            this.updateLoadingText('Initializing media...');
+            await this.initializeMedia();
+            
+            this.updateLoadingText('Reconnecting to room...');
+            
+            if (this.socketHandler) {
+                const joinResult = await this.socketHandler.joinRoom(
+                    sessionData.roomId, 
+                    sessionData.userName, 
+                    sessionData.isTeacher
+                );
+                
+                if (joinResult && joinResult.waiting) {
+                    this.updateLoadingText('Waiting for host to admit you...');
+                    await this.delay(300);
+                } else {
+                    this.updateLoadingText('Restoring interface...');
+                    await this.delay(500);
+                    
+                    this.showMeetingRoom();
+                    this.startTimer();
+                    
+                    this.showNotification('Rejoined meeting successfully', 'success');
+                }
+            }
+            
+        } catch (error) {
+            console.error('Failed to auto-rejoin:', error);
+            this.showNotification('Failed to rejoin meeting. Please join manually.', 'warning');
+            this.clearSession();
+            
+            // Show join screen as fallback
+            await this.simulateLoading();
+            this.hideLoadingScreen();
+        } finally {
+            if (!this.isJoined && !this.isInWaitingRoom) {
+                this.hideLoadingScreen();
             }
         }
     }

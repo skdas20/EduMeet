@@ -75,6 +75,36 @@
     --font-accent: 'Orbitron', 'Inter', sans-serif;
 }
 
+/* Strong override at end of file: make header buttons wrap into two rows on small/medium phones */
+@media (max-width: 640px) {
+    .meeting-header {
+        padding: 8px 12px !important;
+    }
+
+    /* Ensure header-right wraps into a 3-column grid (max 2 rows for 6 buttons) */
+    .meeting-header .header-right {
+        display: grid !important;
+        grid-template-columns: repeat(3, 40px) !important;
+        gap: 8px !important;
+        align-items: center !important;
+        justify-content: end !important;
+        width: auto !important;
+    }
+
+    /* Reduce button size slightly to improve fit */
+    .meeting-header .header-right .btn-header {
+        width: 40px !important;
+        height: 40px !important;
+        padding: 6px !important;
+    }
+
+    /* Hide meeting time to free space on small screens */
+    .meeting-header .header-center { display: none !important; }
+
+    /* Allow header-left to take full width above buttons if needed */
+    .meeting-header .header-left { width: 100%; }
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    RESET & BASE STYLES
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -473,6 +503,28 @@ body::after {
         justify-content: center;
         padding-left: 0.75rem;
         padding-right: 0.75rem;
+    }
+}
+
+/* Header buttons layout for small screens: two rows, max 3 per row */
+@media (max-width: 480px) {
+    .meeting-header {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .header-right {
+        display: grid;
+        grid-template-columns: repeat(3, 40px);
+        gap: 8px;
+        align-items: center;
+        justify-content: end;
+        /* place it below header-left/title on very narrow screens */
+        position: relative;
+    }
+
+    /* Allow header center to shrink and wrap content */
+    .header-center {
+        display: none; /* hide meeting time on very small screens to save space */
     }
 }
 
