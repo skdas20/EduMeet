@@ -804,6 +804,38 @@ class EduMeet {
     }
 
     addVideoTile(participantId, stream, name, isLocal = false) {
+        // Prevent creating a separate public tile for the current user.
+        // Some code paths may attempt to create a tile using the socket id of the
+        // current user (e.g. when media-state updates or signaling arrive).
+        // We already render the user's own camera as `video-local`. If a
+        // non-local tile is requested for our own id, reuse/update the local
+        // tile instead of creating a duplicate.
+        if (this.currentUser && participantId === this.currentUser.id && !isLocal) {
+            const localTile = document.getElementById('video-local');
+            if (localTile) {
+                // Update displayed name to include (You)
+                const participantInfo = localTile.querySelector('.participant-info');
+                if (participantInfo) participantInfo.textContent = `${name} (You)`;
+
+                // If a stream is provided, replace the local stream shown
+                if (stream) {
+                    this.replaceVideoTileStream('local', stream);
+                }
+
+                // Also update media-state icons if available
+                const hasVideo = stream && stream.getVideoTracks && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
+                const hasAudio = stream && stream.getAudioTracks && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
+                this.updateVideoTileMediaState('local', hasVideo, hasAudio);
+
+                return localTile;
+            } else {
+                // If local tile does not exist yet, map the id to 'local' and
+                // proceed to create it as a local tile.
+                participantId = 'local';
+                isLocal = true;
+            }
+        }
+
         const videoGrid = document.getElementById('videoGrid');
         const existingTile = document.getElementById(`video-${participantId}`);
         
