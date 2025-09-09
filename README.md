@@ -1,5 +1,4 @@
-# EduMeet (minimal scaffold)
-
+# EduMeet 
 This repository contains a minimal scaffold for an EduMeet-like app with server and client directories.
 
 Server:
