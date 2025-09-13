@@ -2544,13 +2544,19 @@ class EduMeet {
             // Toggle emoji picker visibility
             if (emojiPicker.classList.contains('show')) {
                 emojiPicker.classList.remove('show');
+                // Clear any existing timeout
+                if (this.emojiPickerTimeout) {
+                    clearTimeout(this.emojiPickerTimeout);
+                    this.emojiPickerTimeout = null;
+                }
             } else {
                 emojiPicker.classList.add('show');
-                
-                // Hide picker after 5 seconds if no selection
-                setTimeout(() => {
+
+                // Hide picker after 10 seconds of inactivity (extended time for multiple reactions)
+                this.emojiPickerTimeout = setTimeout(() => {
                     emojiPicker.classList.remove('show');
-                }, 5000);
+                    this.emojiPickerTimeout = null;
+                }, 10000);
             }
         }
     }
@@ -2562,23 +2568,43 @@ class EduMeet {
         }
         // Animate locally on user's own tile
         this.showReactionOnTile(this.currentUser?.id || 'local', emoji);
-        
-        // Hide picker after selection
+
+        // Reset timeout to keep picker open for more reactions
         const emojiPicker = document.getElementById('emojiPicker');
-        if (emojiPicker) {
-            emojiPicker.classList.remove('show');
+        if (emojiPicker && emojiPicker.classList.contains('show')) {
+            if (this.emojiPickerTimeout) {
+                clearTimeout(this.emojiPickerTimeout);
+            }
+            // Extend timeout after each selection
+            this.emojiPickerTimeout = setTimeout(() => {
+                emojiPicker.classList.remove('show');
+                this.emojiPickerTimeout = null;
+            }, 8000);
         }
     }
 
     showReactionOnTile(participantId, emoji) {
         const videoTile = document.getElementById(`video-${participantId}`) || document.getElementById('pinnedVideo');
         if (!videoTile) return;
+
+        // Create animated reaction element
         const anim = document.createElement('div');
         anim.className = 'reaction-anim';
         anim.textContent = emoji;
+
+        // Add randomization for multiple reactions
+        const randomOffset = (Math.random() - 0.5) * 100; // Random horizontal offset
+        anim.style.left = `calc(50% + ${randomOffset}px)`;
+
         videoTile.style.position = 'relative';
         videoTile.appendChild(anim);
-        setTimeout(() => anim.remove(), 2000);
+
+        // Remove after animation completes (3.5s + small buffer)
+        setTimeout(() => {
+            if (anim.parentNode) {
+                anim.remove();
+            }
+        }, 4000);
     }
 
     // Subtitles toggle (UI only placeholder)
